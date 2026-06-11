@@ -1,4 +1,4 @@
-# JoyAI-VL-Interaction
+# JoyAI-VL-Interaction: An Open Real-time Video-Language Interaction Model
 
 > 🔥 **Full open-source release is coming around June 20, 2026.** The release will include the 8B model, training recipe, time-aligned interaction data, and a complete deployable real-time video-language interaction system.
 
