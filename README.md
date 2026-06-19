@@ -42,8 +42,7 @@
 ## 🔥 News
 
 - **[2026-06-20]** 🎉 Full open-source release — model weights, deployable system, and technical report are now available.
-- **[TODO]** Release time-aligned interaction training data.
-- **[TODO]** Release training recipe.
+- **[TODO]** Release aligned interaction training data.
 - **[TODO]** HuggingFace model & dataset pages.
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)

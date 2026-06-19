@@ -42,8 +42,7 @@
 ## 🔥 最新动态
 
 - **[2026-06-20]** 🎉 完整开源发布，模型权重、可部署系统和技术报告现已开放。
-- **[TODO]** 发布时间对齐交互训练数据。
-- **[TODO]** 发布训练配方。
+- **[TODO]** 发布对齐交互训练数据。
 - **[TODO]** 发布 HuggingFace 模型和数据集页面。
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)
