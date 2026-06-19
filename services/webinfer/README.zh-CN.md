@@ -119,7 +119,7 @@ x-streaming-session: <sessionId>
 | ------------------------------ | ------- | ----------- |
 | `VENV_ACTIVATE` | 空 | 可选虚拟环境 activate 脚本路径。 |
 | `PYTHON_BIN` | `python` | 用于启动 vLLM 和适配器的 Python 可执行文件。 |
-| `STREAMING_MODEL_REPO` | `ydydy/JoyAI-VL-Interaction-Preview` | `../../install/download-models.sh --all` 使用的 Hugging Face 仓库。 |
+| `STREAMING_MODEL_REPO` | `jdopensource/JoyAI-VL-Interaction-Preview` | `../../install/download-models.sh --all` 使用的 Hugging Face 仓库。 |
 | `MODEL_PATH` | `/tmp/models/JoyAI-VL-Interaction-Preview` | 主模型本地路径。 |
 | `SUMMARY_MODEL_REPO` | `Qwen/Qwen3-VL-4B-Instruct` | `../../install/download-models.sh --all` 使用的摘要模型 Hugging Face 仓库。 |
 | `SUMMARY_MODEL_PATH` | `/tmp/models/Qwen3-VL-4B-Instruct` | 摘要模型本地路径；如果不存在，请先下载。 |

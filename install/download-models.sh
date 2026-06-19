@@ -6,7 +6,7 @@ DOWNLOAD_CORE=0
 DOWNLOAD_ASR=0
 DOWNLOAD_TTS=0
 HF_BIN="${HF_BIN:-}"
-STREAMING_MODEL_REPO="${STREAMING_MODEL_REPO:-ydydy/JoyAI-VL-Interaction-Preview}"
+STREAMING_MODEL_REPO="${STREAMING_MODEL_REPO:-jdopensource/JoyAI-VL-Interaction-Preview}"
 STREAMING_MODEL_DIR="${STREAMING_MODEL_DIR:-${MODEL_PATH:-$MODEL_ROOT/JoyAI-VL-Interaction-Preview}}"
 SUMMARY_MODEL_REPO="${SUMMARY_MODEL_REPO:-Qwen/Qwen3-VL-4B-Instruct}"
 SUMMARY_MODEL_DIR="${SUMMARY_MODEL_DIR:-${SUMMARY_MODEL_PATH:-$MODEL_ROOT/Qwen3-VL-4B-Instruct}}"
@@ -33,7 +33,7 @@ Environment overrides:
   HF_BIN=hf
   FORCE_DOWNLOAD=0
   MODEL_ROOT=/tmp/models
-  STREAMING_MODEL_REPO=ydydy/JoyAI-VL-Interaction-Preview
+  STREAMING_MODEL_REPO=jdopensource/JoyAI-VL-Interaction-Preview
   STREAMING_MODEL_DIR=/tmp/models/JoyAI-VL-Interaction-Preview
   MODEL_PATH=/tmp/models/JoyAI-VL-Interaction-Preview
   SUMMARY_MODEL_REPO=Qwen/Qwen3-VL-4B-Instruct

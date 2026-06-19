@@ -43,7 +43,7 @@ Default model paths:
 
 | Model | Default Path | HuggingFace Repo |
 |-------|-------------|------------------|
-| Main interaction model | `/tmp/models/JoyAI-VL-Interaction-Preview` | `ydydy/JoyAI-VL-Interaction-Preview` |
+| Main interaction model | `/tmp/models/JoyAI-VL-Interaction-Preview` | `jdopensource/JoyAI-VL-Interaction-Preview` |
 | Summary model | `/tmp/models/Qwen3-VL-4B-Instruct` | `Qwen/Qwen3-VL-4B-Instruct` |
 | ASR model (optional) | `/tmp/models/Qwen3-ASR-1.7B` | `Qwen/Qwen3-ASR-1.7B` |
 | TTS model (optional) | `/tmp/models/Qwen3-TTS-12Hz-1.7B-CustomVoice` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` |

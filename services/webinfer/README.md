@@ -119,7 +119,7 @@ Recommended image input format is the OpenAI format:
 | ------------------------------ | ------- | ----------- |
 | `VENV_ACTIVATE` | Empty | Optional virtual environment activate script path. |
 | `PYTHON_BIN` | `python` | Python executable used to start vLLM and the adapter. |
-| `STREAMING_MODEL_REPO` | `ydydy/JoyAI-VL-Interaction-Preview` | Hugging Face repo used by `../../install/download-models.sh --all`. |
+| `STREAMING_MODEL_REPO` | `jdopensource/JoyAI-VL-Interaction-Preview` | Hugging Face repo used by `../../install/download-models.sh --all`. |
 | `MODEL_PATH` | `/tmp/models/JoyAI-VL-Interaction-Preview` | Local path of the main model. |
 | `SUMMARY_MODEL_REPO` | `Qwen/Qwen3-VL-4B-Instruct` | Summary model Hugging Face repo used by `../../install/download-models.sh --all`. |
 | `SUMMARY_MODEL_PATH` | `/tmp/models/Qwen3-VL-4B-Instruct` | Local path of the summary model; download it first if it does not exist. |

@@ -41,7 +41,7 @@
 
 | 模型 | 默认路径 | HuggingFace 仓库 |
 |-------|-------------|------------------|
-| 主交互模型 | `/tmp/models/JoyAI-VL-Interaction-Preview` | `ydydy/JoyAI-VL-Interaction-Preview` |
+| 主交互模型 | `/tmp/models/JoyAI-VL-Interaction-Preview` | `jdopensource/JoyAI-VL-Interaction-Preview` |
 | 摘要模型 | `/tmp/models/Qwen3-VL-4B-Instruct` | `Qwen/Qwen3-VL-4B-Instruct` |
 | ASR 模型（可选） | `/tmp/models/Qwen3-ASR-1.7B` | `Qwen/Qwen3-ASR-1.7B` |
 | TTS 模型（可选） | `/tmp/models/Qwen3-TTS-12Hz-1.7B-CustomVoice` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` |
