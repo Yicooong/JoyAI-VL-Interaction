@@ -1,0 +1,9 @@
+# vllm==0.22.0 depends on fastapi[standard]>=0.115.0 and
+# prometheus-fastapi-instrumentator>=7.0.0 without compatible upper bounds.
+# FastAPI 0.137.0 introduced _IncludedRouter entries, and the metrics
+# middleware used by vLLM still expects every matching route to expose .path.
+# Version 8.x of the instrumentator can also resolve with Starlette 1.x.
+# Both cases can break vLLM's OpenAI API middleware with:
+#   AttributeError: '_IncludedRouter' object has no attribute 'path'
+fastapi<0.137
+prometheus-fastapi-instrumentator<8

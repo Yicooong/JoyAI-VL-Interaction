@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "live-vlm-webui"
+version = "0.4.0"
+description = "实时视觉语言模型交互 Web 界面"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "JoyVL Interaction"}
+]
+keywords = [
+    "vision",
+    "ai",
+    "vlm",
+    "vision-language-model",
+    "webui",
+    "real-time",
+    "webrtc",
+    "webcam",
+    "vllm",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Video",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "aiohttp>=3.9.5",
+    "aiohttp-cors>=0.7.0",
+    "aiortc>=1.9.0",
+    "opencv-python>=4.10.0",
+    "numpy>=1.26.4",
+    "Pillow>=10.4.0",
+    "openai>=1.54.3",
+    "httpx>=0.27.2",
+    "av>=12.3.0",
+    "psutil>=5.9.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+]
+
+[project.scripts]
+live-vlm-webui = "live_vlm_webui.server:main"
+live-vlm-webui-stop = "live_vlm_webui.server:stop"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+live_vlm_webui = ["static/*", "static/**/*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"

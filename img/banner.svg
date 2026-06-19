@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 200" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0c29"/>
+      <stop offset="50%" style="stop-color:#302b63"/>
+      <stop offset="100%" style="stop-color:#24243e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="30"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="200" fill="url(#bg)"/>
+
+  <!-- Ambient orbs -->
+  <circle cx="180" cy="100" r="100" fill="#667eea" opacity="0.1" filter="url(#glow)"/>
+  <circle cx="1020" cy="100" r="110" fill="#764ba2" opacity="0.08" filter="url(#glow)"/>
+  <circle cx="600" cy="170" r="80" fill="#f093fb" opacity="0.05" filter="url(#glow)"/>
+
+  <!-- Subtle grid -->
+  <g opacity="0.04" stroke="#ffffff" stroke-width="0.5">
+    <line x1="0" y1="50" x2="1200" y2="50"/>
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="150" x2="1200" y2="150"/>
+    <line x1="240" y1="0" x2="240" y2="200"/>
+    <line x1="480" y1="0" x2="480" y2="200"/>
+    <line x1="720" y1="0" x2="720" y2="200"/>
+    <line x1="960" y1="0" x2="960" y2="200"/>
+  </g>
+
+  <!-- === Left: stacked video frames === -->
+  <g transform="translate(100, 60)">
+    <rect x="0" y="0" width="64" height="44" rx="4" fill="#667eea" fill-opacity="0.08" stroke="#667eea" stroke-width="1.2" opacity="0.4"/>
+    <rect x="12" y="10" width="64" height="44" rx="4" fill="#764ba2" fill-opacity="0.08" stroke="#764ba2" stroke-width="1.2" opacity="0.5"/>
+    <rect x="24" y="20" width="64" height="44" rx="4" fill="#a78bfa" fill-opacity="0.1" stroke="#a78bfa" stroke-width="1.2" opacity="0.6"/>
+    <!-- play icon on top frame -->
+    <polygon points="46,35 46,51 58,43" fill="#a78bfa" opacity="0.5"/>
+  </g>
+
+  <!-- Arrow: frames to model -->
+  <line x1="210" y1="100" x2="310" y2="100" stroke="url(#accent)" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.5"/>
+  <polygon points="310,95 322,100 310,105" fill="#667eea" opacity="0.5"/>
+
+  <!-- === Center: model node === -->
+  <circle cx="380" cy="100" r="30" fill="#667eea" fill-opacity="0.08" stroke="#667eea" stroke-width="1.5" opacity="0.9"/>
+  <circle cx="380" cy="100" r="20" fill="#764ba2" opacity="0.06"/>
+  <text x="380" y="106" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="13" font-weight="700" opacity="0.9">VLM</text>
+
+  <!-- Arrow: model to decisions -->
+  <line x1="412" y1="100" x2="470" y2="100" stroke="url(#accent)" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.5"/>
+
+  <!-- === Decision branches === -->
+  <!-- speak -->
+  <path d="M 470 100 Q 490 68 510 68" stroke="#4ade80" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <rect x="512" y="55" width="72" height="26" rx="13" fill="#4ade80" fill-opacity="0.1" stroke="#4ade80" stroke-width="1.2"/>
+  <text x="548" y="73" text-anchor="middle" fill="#4ade80" font-family="monospace" font-size="12" font-weight="500">speak</text>
+
+  <!-- silent -->
+  <line x1="470" y1="100" x2="512" y2="100" stroke="#94a3b8" stroke-width="1.2" opacity="0.6"/>
+  <rect x="512" y="87" width="72" height="26" rx="13" fill="#94a3b8" fill-opacity="0.1" stroke="#94a3b8" stroke-width="1.2"/>
+  <text x="548" y="105" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="12" font-weight="500">silent</text>
+
+  <!-- delegate -->
+  <path d="M 470 100 Q 490 132 510 132" stroke="#f59e0b" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <rect x="512" y="119" width="72" height="26" rx="13" fill="#f59e0b" fill-opacity="0.1" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="548" y="137" text-anchor="middle" fill="#f59e0b" font-family="monospace" font-size="12" font-weight="500">delegate</text>
+
+  <!-- === Right: service components === -->
+  <!-- dashed connections -->
+  <g stroke="#667eea" stroke-width="0.8" opacity="0.2" stroke-dasharray="4 3">
+    <line x1="586" y1="68" x2="830" y2="60"/>
+    <line x1="586" y1="100" x2="830" y2="88"/>
+    <line x1="586" y1="100" x2="830" y2="116"/>
+    <line x1="586" y1="132" x2="830" y2="144"/>
+  </g>
+
+  <g>
+    <!-- WebUI -->
+    <rect x="832" y="46" width="80" height="28" rx="8" fill="#667eea" fill-opacity="0.08" stroke="#667eea" stroke-width="1"/>
+    <text x="872" y="65" text-anchor="middle" fill="#a5b4fc" font-family="monospace" font-size="11">WebUI</text>
+
+    <!-- ASR -->
+    <rect x="926" y="46" width="56" height="28" rx="8" fill="#667eea" fill-opacity="0.08" stroke="#667eea" stroke-width="1"/>
+    <text x="954" y="65" text-anchor="middle" fill="#a5b4fc" font-family="monospace" font-size="11">ASR</text>
+
+    <!-- TTS -->
+    <rect x="832" y="102" width="56" height="28" rx="8" fill="#667eea" fill-opacity="0.08" stroke="#667eea" stroke-width="1"/>
+    <text x="860" y="121" text-anchor="middle" fill="#a5b4fc" font-family="monospace" font-size="11">TTS</text>
+
+    <!-- Agent -->
+    <rect x="902" y="102" width="80" height="28" rx="8" fill="#667eea" fill-opacity="0.08" stroke="#667eea" stroke-width="1"/>
+    <text x="942" y="121" text-anchor="middle" fill="#a5b4fc" font-family="monospace" font-size="11">Agent</text>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" letter-spacing="2" opacity="0.85">JoyAI-VL-Interaction</text>
+
+  <!-- Tagline -->
+  <text x="600" y="180" text-anchor="middle" fill="#a5b4fc" font-family="system-ui, -apple-system, sans-serif" font-size="12" opacity="0.6">Real-time Vision-Language Interaction  ·  Speak  ·  Silent  ·  Delegate</text>
+
+  <!-- Bottom accent line -->
+  <rect x="0" y="196" width="1200" height="4" fill="url(#accent)" opacity="0.5"/>
+</svg>

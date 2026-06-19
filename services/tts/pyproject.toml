@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "joyvl-tts-adapter"
+version = "0.1.0"
+description = "连接 JoyVL TTS 与本地语音模型的 FastAPI WebSocket 适配服务"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "websockets>=12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[project.scripts]
+joyvl-tts-adapter = "tts_adapter:main"
+
+[tool.setuptools]
+py-modules = ["tts_adapter"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
