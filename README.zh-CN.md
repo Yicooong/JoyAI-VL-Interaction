@@ -1,12 +1,41 @@
-# JoyAI-VL-Interaction
+<p align="center">
+  <img src="img/readme-hero.gif" alt="JoyAI-VL-Interaction 横幅" width="100%">
+</p>
 
-**⚡ 开放的实时视频语言交互系统**
+<div align="center">
 
-一个 8B 规模、完全开放的视觉语言交互模型，以及完整可部署系统。模型、训练配方、时间对齐交互数据和实时流式技术栈都集中在这个仓库中。
+<h1>JoyAI-VL-Interaction</h1>
 
-**[📄 arXiv](https://arxiv.org/html/2606.14777)** | **[🚀 博客](https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/)** | **[📑 报告](https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf)** | **[💻 代码](https://github.com/jd-opensource/JoyAI-VL-Interaction)** | **[🤗 模型 [TODO]](#)** | **[📦 数据集 [TODO]](#)**
+<p><strong>⚡ 开放的实时视频语言交互系统</strong></p>
 
-**[English](README.md)** | **[🚀 快速开始](#-快速开始)** | **[🧩 能力](#-能力)** | **[📊 评测](#-评测)** | **[📝 引用](#-引用)**
+<p>一个 8B 规模、完全开放的视觉语言交互模型，以及完整可部署系统。模型、训练配方、时间对齐交互数据和实时流式技术栈都集中在这个仓库中。</p>
+
+<p>
+  <a href="https://arxiv.org/html/2606.14777"><b>📄 arXiv</b></a> |
+  <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 博客</b></a> |
+  <a href="https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf"><b>📑 报告</b></a> |
+  <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 代码</b></a> |
+  <a href="#"><b>🤗 模型 [TODO]</b></a> |
+  <a href="#"><b>📦 数据集 [TODO]</b></a>
+</p>
+
+<p>
+  <a href="#-快速开始"><b>🚀 快速开始</b></a> |
+  <a href="#-能力"><b>🧩 能力</b></a> |
+  <a href="#-评测"><b>📊 评测</b></a> |
+  <a href="#-引用"><b>📝 引用</b></a>
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/模型-8B-blue?style=flat-square" alt="8B 模型">
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/vLLM-推理-orange?style=flat-square" alt="vLLM">
+  <img src="https://img.shields.io/badge/CUDA-12.x-76B900?style=flat-square&logo=nvidia&logoColor=white" alt="CUDA 12.x">
+  <img src="https://img.shields.io/badge/许可证-Apache_2.0-green?style=flat-square" alt="Apache 2.0">
+  <img src="https://img.shields.io/badge/延迟-<1s-d61f2c?style=flat-square" alt="亚秒级延迟">
+</p>
+
+</div>
 
 > 原文档: [README.md](README.md)
 

@@ -1,20 +1,41 @@
+<p align="center">
+  <img src="img/readme-hero.gif" alt="JoyAI-VL-Interaction banner" width="100%">
+</p>
 
+<div align="center">
 
+<h1>JoyAI-VL-Interaction</h1>
 
+<p><strong>⚡ An Open Real-time Video-Language Interaction System</strong></p>
 
-# JoyAI-VL-Interaction
+<p>An 8B-scale, fully open vision-language interaction model with a complete deployable system — the model, training recipe, time-aligned interaction data, and a real-time streaming stack, all in one repository.</p>
 
-**⚡ An Open Real-time Video-Language Interaction System**
+<p>
+  <a href="https://arxiv.org/html/2606.14777"><b>📄 arXiv</b></a> |
+  <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 Blog</b></a> |
+  <a href="https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf"><b>📑 Report</b></a> |
+  <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 Code</b></a> |
+  <a href="#"><b>🤗 Model [TODO]</b></a> |
+  <a href="#"><b>📦 Dataset [TODO]</b></a>
+</p>
 
-An 8B-scale, fully open vision-language interaction model with a complete deployable system — the model, training recipe, time-aligned interaction data, and a real-time streaming stack, all in one repository.
+<p>
+  <a href="#-quick-start"><b>🚀 Quick Start</b></a> |
+  <a href="#-capability"><b>🧩 Capability</b></a> |
+  <a href="#-evaluation"><b>📊 Evaluation</b></a> |
+  <a href="#-citation"><b>📝 Citation</b></a>
+</p>
 
-**[📄 arXiv](https://arxiv.org/html/2606.14777)** | **[🚀 Blog](https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/)** | **[📑 Report](https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf)** | **[💻 Code](https://github.com/jd-opensource/JoyAI-VL-Interaction)** | **[🤗 Model [TODO]](#)** | **[📦 Dataset [TODO]](#)**
+<p>
+  <img src="https://img.shields.io/badge/Model-8B-blue?style=flat-square" alt="8B Model">
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/vLLM-Inference-orange?style=flat-square" alt="vLLM">
+  <img src="https://img.shields.io/badge/CUDA-12.x-76B900?style=flat-square&logo=nvidia&logoColor=white" alt="CUDA 12.x">
+  <img src="https://img.shields.io/badge/License-Apache_2.0-green?style=flat-square" alt="Apache 2.0">
+  <img src="https://img.shields.io/badge/Latency-<1s-d61f2c?style=flat-square" alt="Sub-second latency">
+</p>
 
-**[🚀 Quick Start](#-quick-start)** | **[🧩 Capability](#-capability)** | **[📊 Evaluation](#-evaluation)** | **[📝 Citation](#-citation)**
-
-
-
-
+</div>
 
 > 中文文档: [README.zh-CN.md](README.zh-CN.md)
 
