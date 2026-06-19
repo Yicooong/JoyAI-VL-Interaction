@@ -49,7 +49,7 @@
 
 ## ✨ Introduction
 
-JoyAI-VL-Interaction overview
+![JoyAI-VL-Interaction overview](img/overview.png)
 
 The most important moments rarely wait for you to ask. A pot boils over while your hands are full. A toddler wanders toward the stove. The best moment of the game is gone before you can react. Today's AI can't help with moments like these — these models are turn-based by design: they sit quietly until you address them, then answer the question you asked.
 

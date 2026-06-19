@@ -49,7 +49,7 @@
 
 ## ✨ 简介
 
-JoyAI-VL-Interaction overview
+![JoyAI-VL-Interaction overview](img/overview.png)
 
 最重要的时刻往往不会等你开口提问。锅里的水在你双手忙碌时溢出，孩子走向炉灶，比赛中最精彩的一瞬在你反应前已经过去。今天的 AI 很难在这些时刻帮上忙，因为这些模型从设计上就是回合制的：它们安静地等待你召唤，然后回答你刚刚提出的问题。
 
