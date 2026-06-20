@@ -41,6 +41,7 @@
 ## 🔥 News
 
 - **[2026-06-20]** 🎉 Full open-source release — model weights, deployable system, and technical report are now available.
+- **[2026-06-20]** 🚀 Day-0 deployment support via [vLLM-Omni](https://github.com/vllm-project/vllm-omni) ([recipe](https://github.com/vllm-project/vllm-omni/blob/main/recipes/JD/JoyAI-VL-Interaction.md)).
 - **[2026-06-20]** 🎉 Release aligned interaction training data.
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)

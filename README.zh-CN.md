@@ -41,6 +41,7 @@
 ## 🔥 最新动态
 
 - **[2026-06-20]** 🎉 完整开源发布，模型权重、可部署系统和技术报告现已开放。
+- **[2026-06-20]** 🚀 [vLLM-Omni](https://github.com/vllm-project/vllm-omni) 提供 day-0 部署支持（[部署指南](https://github.com/vllm-project/vllm-omni/blob/main/recipes/JD/JoyAI-VL-Interaction.md)）。
 - **[2026-06-20]** 🎉 发布对齐交互训练数据。
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)
