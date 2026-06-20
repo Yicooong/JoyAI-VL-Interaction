@@ -11,12 +11,11 @@
 <p>An 8B-scale, fully open vision-language interaction model with a complete deployable system — the model, training recipe, time-aligned interaction data, and a real-time streaming stack, all in one repository.</p>
 
 <p>
-  <a href="https://arxiv.org/html/2606.14777"><b>📄 arXiv</b></a> |
+  <a href="https://arxiv.org/pdf/2606.14777"><b>📄 arXiv</b></a> |
   <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 Blog</b></a> |
-  <a href="https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf"><b>📑 Report</b></a> |
   <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 Code</b></a> |
-  <a href="#"><b>🤗 Model [TODO]</b></a> |
-  <a href="#"><b>📦 Dataset [TODO]</b></a>
+  <a href="https://huggingface.co/jdopensource/JoyAI-VL-Interaction-Preview"><b>🤗 Model</b></a> |
+  <a href="https://huggingface.co/datasets/jdopensource/JoyAI-VL-Interaction"><b>📦 Dataset</b></a>
 </p>
 
 <p>
@@ -43,8 +42,7 @@
 
 - **[2026-06-20]** 🎉 Full open-source release — model weights, deployable system, and technical report are now available.
 - **[2026-06-20]** 🚀 Day-0 deployment support via [vLLM-Omni](https://github.com/vllm-project/vllm-omni) ([recipe](https://github.com/vllm-project/vllm-omni/blob/main/recipes/JD/JoyAI-VL-Interaction.md)).
-- **[TODO]** Release aligned interaction training data.
-- **[TODO]** HuggingFace model & dataset pages.
+- **[2026-06-20]** 🎉 Release aligned interaction training data.
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)
 
@@ -182,8 +180,8 @@ We evaluate JoyAI-VL-Interaction in **58 real, event-driven visual interaction s
 - [x] Release interaction model blog
 - [x] Release deployable system code
 - [x] Release technical report
-- [ ] Release time-aligned interaction training data
-- [ ] HuggingFace model & dataset pages
+- [x] Release time-aligned interaction training data
+- [x] HuggingFace model & dataset pages
 
 ## 📝 Citation
 

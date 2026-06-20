@@ -2,7 +2,7 @@
 RTSP Video Track for IP Camera Support
 
 This module provides VideoStreamTrack implementation for RTSP streams,
-allowing live-vlm-webui to process IP camera feeds instead of just webcams.
+allowing joy-interaction-webui to process IP camera feeds instead of just webcams.
 
 SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 SPDX-License-Identifier: Apache-2.0

@@ -11,12 +11,11 @@
 <p>一个 8B 规模、完全开放的视觉语言交互模型，以及完整可部署系统。模型、训练配方、时间对齐交互数据和实时流式技术栈都集中在这个仓库中。</p>
 
 <p>
-  <a href="https://arxiv.org/html/2606.14777"><b>📄 arXiv</b></a> |
+  <a href="https://arxiv.org/pdf/2606.14777"><b>📄 arXiv</b></a> |
   <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 博客</b></a> |
-  <a href="https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf"><b>📑 报告</b></a> |
   <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 代码</b></a> |
-  <a href="#"><b>🤗 模型 [TODO]</b></a> |
-  <a href="#"><b>📦 数据集 [TODO]</b></a>
+  <a href="https://huggingface.co/jdopensource/JoyAI-VL-Interaction-Preview"><b>🤗 模型</b></a> |
+  <a href="https://huggingface.co/datasets/jdopensource/JoyAI-VL-Interaction"><b>📦 数据集</b></a>
 </p>
 
 <p>
@@ -43,8 +42,7 @@
 
 - **[2026-06-20]** 🎉 完整开源发布，模型权重、可部署系统和技术报告现已开放。
 - **[2026-06-20]** 🚀 [vLLM-Omni](https://github.com/vllm-project/vllm-omni) 提供 day-0 部署支持（[部署指南](https://github.com/vllm-project/vllm-omni/blob/main/recipes/JD/JoyAI-VL-Interaction.md)）。
-- **[TODO]** 发布对齐交互训练数据。
-- **[TODO]** 发布 HuggingFace 模型和数据集页面。
+- **[2026-06-20]** 🎉 发布对齐交互训练数据。
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)
 
@@ -182,8 +180,8 @@ JoyAI-VL-Interaction 的核心，是模型每秒自主做出的一个决策：**
 - [x] 发布交互模型博客
 - [x] 发布可部署系统代码
 - [x] 发布技术报告
-- [ ] 发布时间对齐交互训练数据
-- [ ] 发布 HuggingFace 模型和数据集页面
+- [x] 发布时间对齐交互训练数据
+- [x] 发布 HuggingFace 模型和数据集页面
 
 ## 📝 引用
 

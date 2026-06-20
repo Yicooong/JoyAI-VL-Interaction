@@ -668,14 +668,10 @@ class VLMService:
         self._last_background_handoff_meta = None
         return meta
 
-    def update_prompt(self, new_prompt: Optional[str], max_tokens: Optional[int] = None) -> None:
+    def update_prompt(self, new_prompt: Optional[str]) -> None:
         prompt_text = new_prompt.strip() if new_prompt else None
         self.prompt = prompt_text
-        if max_tokens is not None:
-            self.max_tokens = max_tokens
-            logger.info(f"Updated prompt to: {prompt_text}, max_tokens: {max_tokens}")
-        else:
-            logger.info(f"Updated prompt to: {prompt_text}")
+        logger.info(f"Updated prompt to: {prompt_text}")
 
     def update_api_settings(
         self, api_base: Optional[str] = None, api_key: Optional[str] = None
@@ -714,26 +710,4 @@ class VLMService:
                     return ok
         except Exception as e:
             logger.warning(f"Adapter reset failed for session {self.session_id}: {e}")
-            return False
-
-    async def update_persona(self, persona: str) -> bool:
-        """Call the adapter's /v1/streaming/persona to switch response mode."""
-        import aiohttp
-
-        persona_url = self.api_base.rstrip("/").removesuffix("/v1") + "/v1/streaming/persona"
-        try:
-            async with aiohttp.ClientSession() as http:
-                async with http.post(
-                    persona_url,
-                    json={"user": self.session_id, "persona": persona},
-                    headers={"x-streaming-session": self.session_id},
-                    timeout=aiohttp.ClientTimeout(total=5),
-                ) as resp:
-                    ok = resp.status == 200
-                    logger.info(
-                        f"Adapter persona update for session {self.session_id}: persona={persona} status={resp.status}"
-                    )
-                    return ok
-        except Exception as e:
-            logger.warning(f"Adapter persona update failed for session {self.session_id}: {e}")
             return False

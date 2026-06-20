@@ -78,7 +78,6 @@ http://127.0.0.1:8070/v1
 | `GET /v1/models` | Returns available main models; default is `JoyAI-VL-Interaction-Preview`. |
 | `POST /v1/chat/completions` | Core endpoint; compatible with OpenAI chat completions and supports image frames. |
 | `POST /v1/streaming/reset` | Resets a session and flushes existing outputs. |
-| `POST /v1/streaming/persona` | Switches response style: `default`, `talkative`, or `aloof`. |
 
 The recommended place for the session is the header:
 

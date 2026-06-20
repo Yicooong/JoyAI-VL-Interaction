@@ -2136,13 +2136,6 @@ limitations under the License.
             z-index: 30;
         }
 
-        .prompt-popover.tokens {
-            left: auto;
-            right: 44px;
-            width: 220px;
-            padding: 12px;
-        }
-
         .prompt-popover.hidden {
             display: none;
         }
@@ -2164,6 +2157,25 @@ limitations under the License.
             cursor: pointer;
         }
 
+        .prompt-preset-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .prompt-preset-copy .zh {
+            font-size: 15px;
+            line-height: 1.35;
+            color: var(--text-primary);
+        }
+
+        .prompt-preset-copy .en {
+            font-size: 13px;
+            line-height: 1.35;
+            color: var(--text-secondary);
+        }
+
         .prompt-preset-option:hover,
         .prompt-preset-option.selected {
             background: var(--hover-bg);
@@ -2178,24 +2190,6 @@ limitations under the License.
 
         .prompt-preset-option.selected .check {
             opacity: 1;
-        }
-
-        .token-popover-row {
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 6px;
-        }
-
-        .token-popover-label {
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 600;
-            line-height: 1.2;
-        }
-
-        .token-popover-row input {
-            min-width: 0;
         }
 
         /* Embedded markdown toggle button */
@@ -2695,7 +2689,6 @@ limitations under the License.
 
         /* Input fields - Focus and Apply animations */
         #promptText,
-        #maxTokens,
         #processEvery,
         #apiBaseUrl,
         #apiKey,
@@ -2707,7 +2700,6 @@ limitations under the License.
 
         /* Default: Neutral white focus glow (when colorful is disabled) */
         #promptText:focus,
-        #maxTokens:focus,
         #processEvery:focus,
         #cameraSelect:focus,
         #apiBaseUrl:focus,
@@ -2721,8 +2713,7 @@ limitations under the License.
         }
 
         /* Colorful focus glows (only when enabled) */
-        body.colorful-focus #promptText:focus,
-        body.colorful-focus #maxTokens:focus {
+        body.colorful-focus #promptText:focus {
             border-color: rgb(251, 191, 36) !important;
             box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3),
                         0 0 12px rgba(251, 191, 36, 0.4) !important;
@@ -2761,7 +2752,6 @@ limitations under the License.
         }
 
         #promptText.applied,
-        #maxTokens.applied,
         #processEvery.applied,
         #apiBaseUrl.applied,
         #apiKey.applied,
@@ -3127,7 +3117,6 @@ limitations under the License.
             }
 
             .chat-prompt-shell.mobile-voice-mode #promptPresetBtn,
-            .chat-prompt-shell.mobile-voice-mode #maxTokensBtn,
             .chat-prompt-shell.mobile-voice-mode #promptSendBtn,
             .chat-prompt-shell.mobile-voice-mode .chat-prompt-input,
             .chat-prompt-shell.mobile-voice-mode .prompt-popover {
@@ -3193,12 +3182,6 @@ limitations under the License.
                 width: calc(100vw - 20px);
                 max-height: min(320px, 55dvh);
                 left: -8px;
-            }
-
-            .prompt-popover.tokens {
-                width: 180px;
-                right: 42px;
-                left: auto;
             }
 
             .sidebar {
@@ -3655,15 +3638,6 @@ limitations under the License.
                             <option value="">Loading models...</option>
                         </select>
                     </div>
-                    <div class="form-group" style="display: none;">
-                        <label style="margin-bottom: 8px;">Response Mode</label>
-                        <select id="personaSelect" class="settings-select">
-                            <option value="default">Default / 默认模式</option>
-                            <option value="silent">Silent / 沉默版</option>
-                            <option value="talkative">Talkative / 话痨版</option>
-                        </select>
-                        <div class="input-hint">Controls how frequently the model speaks</div>
-                    </div>
                 </div>
             </div>
 
@@ -3868,22 +3842,35 @@ limitations under the License.
                         </button>
                         <div class="prompt-popover hidden" id="promptPresetMenu">
                             <button class="prompt-preset-option" type="button" data-label="请实时解说我的表情和动作" data-prompt="请实时解说我的表情和动作">
-                                <span>请实时解说我的表情和动作</span><span class="check">✓</span>
+                                <span class="prompt-preset-copy">
+                                    <span class="zh">请实时解说我的表情和动作</span>
+                                    <span class="en">Describe my facial expressions and movements in real time</span>
+                                </span>
+                                <span class="check">✓</span>
                             </button>
-                            <button class="prompt-preset-option" type="button" data-label="Describe my facial expressions and movements in real time in English" data-prompt="Describe my facial expressions and movements in real time in English">
-                                <span>Describe my facial expressions and movements in real time in English</span><span class="check">✓</span>
+                            <button class="prompt-preset-option" type="button" data-label="结合画面内容，生成一张水彩风格的图像" data-prompt="结合画面内容，生成一张水彩风格的图像">
+                                <span class="prompt-preset-copy">
+                                    <span class="zh">结合画面内容，生成一张水彩风格的图像</span>
+                                    <span class="en">Generate a watercolor-style image based on the scene</span>
+                                </span>
+                                <span class="check">✓</span>
+                            </button>
+                            <button class="prompt-preset-option" type="button" data-label="现在我们玩一个快问快答的游戏，限时30秒，迅速回答问题，结束提醒我" data-prompt="现在我们玩一个快问快答的游戏，限时30秒，迅速回答问题，结束提醒我">
+                                <span class="prompt-preset-copy">
+                                    <span class="zh">现在我们玩一个快问快答的游戏，限时30秒，迅速回答问题，结束提醒我</span>
+                                    <span class="en">Let's play a rapid-fire Q&amp;A game for 30 seconds; answer quickly and remind me when it ends</span>
+                                </span>
+                                <span class="check">✓</span>
+                            </button>
+                            <button class="prompt-preset-option" type="button" data-label="每当一个瓶子出现时，介绍它的样子" data-prompt="每当一个瓶子出现时，介绍它的样子">
+                                <span class="prompt-preset-copy">
+                                    <span class="zh">每当一个瓶子出现时，介绍它的样子</span>
+                                    <span class="en">Whenever a bottle appears, describe what it looks like</span>
+                                </span>
+                                <span class="check">✓</span>
                             </button>
                         </div>
                         <textarea class="chat-prompt-input" id="promptText" rows="1" placeholder="Message the VLM..."></textarea>
-                        <button class="chat-prompt-action" id="maxTokensBtn" title="Max tokens" type="button">
-                            <i data-lucide="sliders-horizontal"></i>
-                        </button>
-                        <div class="prompt-popover tokens hidden" id="maxTokensMenu">
-                            <div class="token-popover-row">
-                                <label class="token-popover-label" for="maxTokens">Max tokens</label>
-                                <input type="number" id="maxTokens" value="512" min="1" max="4096" step="1" title="Max tokens">
-                            </div>
-                        </div>
                         <button class="chat-prompt-action speech speech-control" id="speechBtn" title="视频开始后可说话" type="button" disabled>
                             <i class="mic-icon" data-lucide="mic"></i>
                             <span class="voice-wave" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
@@ -3937,9 +3924,6 @@ limitations under the License.
         const speechBtn = document.getElementById('speechBtn');
         const speechButtons = [speechBtn].filter(Boolean);
         const promptSendBtn = document.getElementById('promptSendBtn');
-        const maxTokensBtn = document.getElementById('maxTokensBtn');
-        const maxTokensMenu = document.getElementById('maxTokensMenu');
-        const maxTokens = document.getElementById('maxTokens');
         const modelSelect = document.getElementById('modelSelect');
         const refreshModelsBtn = document.getElementById('refreshModelsBtn');
         const processEvery = document.getElementById('processEvery');
@@ -6956,12 +6940,6 @@ limitations under the License.
             promptSendBtn.title = canSendPrompt ? 'Send prompt' : 'Start the video to send';
             syncSpeechButtons();
 
-            const personaEl = document.getElementById('personaSelect');
-            if (personaEl) {
-                personaEl.disabled = isAnalysisRunning;
-                personaEl.title = isAnalysisRunning ? '视频推理中不可切换，请先停止视频' : '';
-            }
-
             processEvery.disabled = isAnalysisRunning;
             processEvery.title = isAnalysisRunning ? '推理中不可修改，请先停止视频' : '';
             framesPerBatch.disabled = isAnalysisRunning;
@@ -7163,26 +7141,6 @@ limitations under the License.
             }
         });
 
-        // Handle persona change (only allowed before streaming starts)
-        const personaSelect = document.getElementById('personaSelect');
-        personaSelect.addEventListener('change', (e) => {
-            if (isAnalysisRunning) {
-                e.preventDefault();
-                return;
-            }
-            const newPersona = e.target.value;
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                websocket.send(JSON.stringify({
-                    type: 'update_persona',
-                    persona: newPersona
-                }));
-            }
-            personaSelect.classList.add('applied');
-            setTimeout(() => {
-                personaSelect.classList.remove('applied');
-            }, 600);
-        });
-
         // Helper function to apply prompt settings
         function applyPromptSettings() {
             if (!isAnalysisRunning) {
@@ -7192,7 +7150,6 @@ limitations under the License.
             }
 
             const newPrompt = cleanBackgroundQuestionText(promptText.value.trim());
-            const tokens = parseInt(maxTokens.value) || 512;
 
             currentPromptText = newPrompt;
             if (newPrompt) {
@@ -7204,8 +7161,7 @@ limitations under the License.
             if (websocket && websocket.readyState === WebSocket.OPEN) {
                 websocket.send(JSON.stringify({
                     type: 'update_prompt',
-                    prompt: newPrompt,
-                    max_tokens: tokens
+                    prompt: newPrompt
                 }));
             }
 
@@ -7224,10 +7180,6 @@ limitations under the License.
             if (except !== 'presets') {
                 promptPresetMenu.classList.add('hidden');
                 promptPresetBtn.classList.remove('active');
-            }
-            if (except !== 'tokens') {
-                maxTokensMenu.classList.add('hidden');
-                maxTokensBtn.classList.remove('active');
             }
         }
 
@@ -7623,18 +7575,6 @@ limitations under the License.
             });
         });
 
-        maxTokensBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const willOpen = maxTokensMenu.classList.contains('hidden');
-            closePromptPopovers(willOpen ? 'tokens' : null);
-            maxTokensMenu.classList.toggle('hidden', !willOpen);
-            maxTokensBtn.classList.toggle('active', willOpen);
-            if (willOpen) {
-                maxTokens.focus();
-                maxTokens.select();
-            }
-        });
-
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.chat-prompt-shell')) {
                 closePromptPopovers();
@@ -7788,18 +7728,6 @@ limitations under the License.
         promptSendBtn.addEventListener('click', () => {
             if (applyPromptSettings()) {
                 flashPromptControl(promptText);
-            }
-        });
-
-        maxTokens.addEventListener('change', () => {
-            flashPromptControl(maxTokens);
-        });
-
-        maxTokens.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                closePromptPopovers();
-                promptText.focus();
             }
         });
 
@@ -8400,14 +8328,6 @@ limitations under the License.
                 await startRTSP(token);
             }
 
-            // Send persona setting at stream start
-            const currentPersona = document.getElementById('personaSelect').value;
-            if (currentPersona && websocket && websocket.readyState === WebSocket.OPEN) {
-                websocket.send(JSON.stringify({
-                    type: 'update_persona',
-                    persona: currentPersona
-                }));
-            }
         }
 
         // Start WebRTC (Webcam mode)

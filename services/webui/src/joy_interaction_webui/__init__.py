@@ -20,8 +20,8 @@ A universal web interface for streaming webcam feeds to Vision Language Models
 with real-time AI analysis.
 """
 
-__version__ = "0.4.0"
-__author__ = "NVIDIA Corporation"
+__version__ = "0.1.0"
+__author__ = "Joy Future Academy"
 __license__ = "Apache-2.0"
 
 __all__ = ["__version__", "__author__", "__license__"]

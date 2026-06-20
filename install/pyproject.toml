@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "live-vlm-webui"
-version = "0.4.0"
+name = "joy-interaction-webui"
+version = "0.1.0"
 description = "实时视觉语言模型交互 Web 界面"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "JoyVL Interaction"}
+    {name = "Joy Future Academy"}
 ]
 keywords = [
     "vision",
@@ -57,14 +57,14 @@ dev = [
 ]
 
 [project.scripts]
-live-vlm-webui = "live_vlm_webui.server:main"
-live-vlm-webui-stop = "live_vlm_webui.server:stop"
+joy-interaction-webui = "joy_interaction_webui.server:main"
+joy-interaction-webui-stop = "joy_interaction_webui.server:stop"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-live_vlm_webui = ["static/*", "static/**/*"]
+joy_interaction_webui = ["static/*", "static/**/*"]
 
 [tool.black]
 line-length = 100

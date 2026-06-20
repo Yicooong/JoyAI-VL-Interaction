@@ -88,7 +88,7 @@ def _get_i18n(language: str = "en") -> dict[str, str]:
         "qa_query_label": QA_QUERY_LABEL_ZH,
         "qa_response_label": QA_RESPONSE_LABEL_ZH,
     }
-DEFAULT_SAVE_ROOT = "result_v2"
+DEFAULT_SAVE_ROOT = "result"
 TIME_RANGE_RE = re.compile(r"<(?P<range>\d+(?:\.\d+)?\s*seconds?)>")
 TIME_RANGE_VALUE_RE = re.compile(r"^(?P<range>\d+(?:\.\d+)?s-\d+(?:\.\d+)?s)$")
 DEFAULT_SYSTEM_PROMPT_EN = """You are a real-time video streaming assistant observing a continuous camera feed frame by frame. The last frame represents the current moment.
@@ -119,43 +119,6 @@ Choose this when you observe something worth reporting or a significant state ch
 
 **Delegate** — when a question is too hard or error-prone to answer reliably yourself, speak a brief note that you're delegating, then hand the question to the background solver:
 </response> Brief note that you're delegating. <delegation> <the question>""".strip()
-
-
-SILENT_SYSTEM_PROMPT = """You are a real-time video streaming assistant observing a continuous camera feed frame by frame. The last frame represents the current moment.
-## Action Format
-At every inference step you MUST choose exactly one of the following three actions:
-**Stay silent** — output ONLY:
-</silence>
-Choose this when nothing noteworthy has changed in the scene, no user query is pending, or there is nothing useful to say.
-**Speak** — output the token followed by a concise reply:
-</response> Your reply here.
-Choose this when you observe something worth reporting or a significant state change, or when you can answer a user question based on available evidence.
-
-Do NOT delegate or defer questions to other models. Answer user queries directly based on everything you have seen.""".strip()
-
-
-TALKATIVE_SYSTEM_PROMPT = """You are a real-time video streaming assistant observing a continuous camera feed frame by frame. The last frame represents the current moment.
-## Action Format
-At every inference step you MUST choose exactly one of the following three actions:
-**Stay silent** — output ONLY:
-</silence>
-Choose this when nothing noteworthy has changed in the scene, no user query is pending, or there is nothing useful to say.
-**Speak** — output the token followed by a concise reply:
-</response> Your reply here.
-Choose this when you observe something worth reporting or a significant state change, or when you can answer a user question based on available evidence.
-
-**Delegate** — when a question is too hard or error-prone to answer reliably yourself, speak a brief note that you're delegating, then hand the question to the background solver:
-</response> Brief note that you're delegating. <delegation> <the question>
-
-## Style
-Proactively speak whenever you observe a meaningful event, state change, or anomaly — do not wait for the user to ask. However, avoid repeating information you have already reported. When the scene shows no obvious change, choose silence.""".strip()
-
-
-PERSONA_PROMPTS = {
-    "default": DEFAULT_SYSTEM_PROMPT_EN,
-    "silent": SILENT_SYSTEM_PROMPT,
-    "talkative": TALKATIVE_SYSTEM_PROMPT,
-}
 
 
 def reset_chunk_state() -> dict[str, Any]:
@@ -534,7 +497,6 @@ class SessionState:
     session_frame_counter: int = 0
     chunk_start_input_saved: set[int] = field(default_factory=set)
     last_access: float = field(default_factory=time.time)
-    persona_system_prompt: Optional[str] = field(default=None)
     _pending_qa_archive: Optional[tuple[str, Optional[str]]] = field(default=None, repr=False)
     _pending_write_task: Optional[asyncio.Task] = field(default=None, repr=False)
 
@@ -713,20 +675,6 @@ class StreamingInferAdapter:
             await self._flush_session_outputs(removed_state)
         removed = removed_state is not None
         return web.json_response({"ok": True, "session_id": session_id, "removed": removed})
-
-    async def handle_persona(self, request: web.Request) -> web.Response:
-        payload = await _read_json(request)
-        session_id = _request_session_id(request, payload)
-        persona = str(payload.get("persona", "default")).strip()
-        if persona not in PERSONA_PROMPTS:
-            return _openai_error_response(
-                f"invalid persona: {persona}, must be one of {list(PERSONA_PROMPTS.keys())}",
-                status=400,
-            )
-        state = self.get_session(session_id)
-        state.persona_system_prompt = PERSONA_PROMPTS[persona]
-        LOGGER.info("[%s] persona updated to: %s", state.session_id, persona)
-        return web.json_response({"ok": True, "session_id": state.session_id, "persona": persona})
 
     async def handle_chat_completions(self, request: web.Request) -> web.Response:
         payload = await _read_json(request)
@@ -1518,11 +1466,7 @@ class StreamingInferAdapter:
         client = client or self.main_client
         model_name = model_name or self.config.main_model
         generation_kwargs = self._main_generation_kwargs(inbound_payload)
-        system_prompt = (
-            session_state.persona_system_prompt
-            if session_state and session_state.persona_system_prompt is not None
-            else self.config.system_prompt
-        )
+        system_prompt = self.config.system_prompt
         if system_prompt:
             api_messages = [{"role": "system", "content": system_prompt}] + api_messages
         response = await client.chat.completions.create(
@@ -2517,12 +2461,6 @@ def parse_args() -> AdapterConfig:
         help="System prompt prepended to every 8B main-model request. Set SYSTEM_PROMPT='' to disable the built-in default.",
     )
     parser.add_argument(
-        "--persona",
-        default=os.environ.get("PERSONA", "default"),
-        choices=list(PERSONA_PROMPTS.keys()),
-        help="Personality mode: default, silent, or talkative.",
-    )
-    parser.add_argument(
         "--language",
         default=os.environ.get("ADAPTER_LANGUAGE", "en"),
         choices=["zh", "en"],
@@ -2636,7 +2574,7 @@ def parse_args() -> AdapterConfig:
         summarizer_debug=not args.no_summarizer_debug,
         frame_save_dir=args.frame_save_dir,
         language=args.language,
-        system_prompt=args.system_prompt if args.persona == "default" else PERSONA_PROMPTS[args.persona],
+        system_prompt=args.system_prompt,
     )
 
 
@@ -2651,7 +2589,6 @@ def create_app(config: AdapterConfig) -> web.Application:
     app.router.add_get("/v1/models", adapter.handle_models)
     app.router.add_post("/v1/chat/completions", adapter.handle_chat_completions)
     app.router.add_post("/v1/streaming/reset", adapter.handle_reset)
-    app.router.add_post("/v1/streaming/persona", adapter.handle_persona)
     return app
 
 

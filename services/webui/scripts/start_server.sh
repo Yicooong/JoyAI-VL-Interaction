@@ -29,7 +29,7 @@ if [ ! -f cert.pem ] || [ ! -f key.pem ]; then
   bash "${SCRIPT_DIR}/generate_cert.sh"
 fi
 
-PYTHONPATH="src${PYTHONPATH:+:$PYTHONPATH}" python -m live_vlm_webui.server \
+PYTHONPATH="src${PYTHONPATH:+:$PYTHONPATH}" python -m joy_interaction_webui.server \
   --ssl-cert cert.pem \
   --ssl-key key.pem \
   --host 0.0.0.0 \
