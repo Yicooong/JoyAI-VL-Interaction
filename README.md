@@ -13,10 +13,10 @@
 <p>
   <a href="https://arxiv.org/html/2606.14777"><b>📄 arXiv</b></a> |
   <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 Blog</b></a> |
-  <a href="https://echovideo.jd.cn/JoyAI-VL-Interaction/JoyAI-VL-Interaction-Reportv1.pdf"><b>📑 Report</b></a> |
+  <a href="https://huggingface.co/papers/2606.14777"><b>📑 Report</b></a> |
   <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 Code</b></a> |
-  <a href="#"><b>🤗 Model [TODO]</b></a> |
-  <a href="#"><b>📦 Dataset [TODO]</b></a>
+  <a href="https://huggingface.co/jdopensource/JoyAI-VL-Interaction-Preview"><b>🤗 Model [TODO]</b></a> |
+  <a href="https://huggingface.co/datasets/jdopensource/JoyAI-VL-Interaction"><b>📦 Dataset [TODO]</b></a>
 </p>
 
 <p>
