@@ -42,6 +42,7 @@
 ## 🔥 News
 
 - **[2026-06-20]** 🎉 Full open-source release — model weights, deployable system, and technical report are now available.
+- **[2026-06-20]** 🚀 Day-0 deployment support via [vLLM-Omni](https://github.com/vllm-project/vllm-omni) ([recipe](https://github.com/vllm-project/vllm-omni/blob/main/recipes/JD/JoyAI-VL-Interaction.md)).
 - **[TODO]** Release aligned interaction training data.
 - **[TODO]** HuggingFace model & dataset pages.
 

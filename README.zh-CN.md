@@ -42,6 +42,7 @@
 ## 🔥 最新动态
 
 - **[2026-06-20]** 🎉 完整开源发布，模型权重、可部署系统和技术报告现已开放。
+- **[2026-06-20]** 🚀 [vLLM-Omni](https://github.com/vllm-project/vllm-omni) 提供 day-0 部署支持（[部署指南](https://github.com/vllm-project/vllm-omni/blob/main/recipes/JD/JoyAI-VL-Interaction.md)）。
 - **[TODO]** 发布对齐交互训练数据。
 - **[TODO]** 发布 HuggingFace 模型和数据集页面。
 
