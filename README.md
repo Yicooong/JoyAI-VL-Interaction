@@ -15,8 +15,8 @@
   <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 Blog</b></a> |
   <a href="https://huggingface.co/papers/2606.14777"><b>📑 Report</b></a> |
   <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 Code</b></a> |
-  <a href="https://huggingface.co/jdopensource/JoyAI-VL-Interaction-Preview"><b>🤗 Model [TODO]</b></a> |
-  <a href="https://huggingface.co/datasets/jdopensource/JoyAI-VL-Interaction"><b>📦 Dataset [TODO]</b></a>
+  <a href="https://huggingface.co/jdopensource/JoyAI-VL-Interaction-Preview"><b>🤗 Model</b></a> |
+  <a href="https://huggingface.co/datasets/jdopensource/JoyAI-VL-Interaction"><b>📦 Dataset</b></a>
 </p>
 
 <p>
@@ -181,8 +181,8 @@ We evaluate JoyAI-VL-Interaction in **58 real, event-driven visual interaction s
 - [x] Release interaction model blog
 - [x] Release deployable system code
 - [x] Release technical report
-- [ ] Release time-aligned interaction training data
-- [ ] HuggingFace model & dataset pages
+- [x] Release time-aligned interaction training data
+- [x] HuggingFace model & dataset pages
 
 ## 📝 Citation
 
