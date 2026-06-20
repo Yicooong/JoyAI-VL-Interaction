@@ -11,9 +11,8 @@
 <p>An 8B-scale, fully open vision-language interaction model with a complete deployable system — the model, training recipe, time-aligned interaction data, and a real-time streaming stack, all in one repository.</p>
 
 <p>
-  <a href="https://arxiv.org/html/2606.14777"><b>📄 arXiv</b></a> |
+  <a href="https://arxiv.org/pdf/2606.14777"><b>📄 arXiv</b></a> |
   <a href="https://joyai-vl-video-future-academy-jd.github.io/JoyAI-VL-Interaction/"><b>🚀 Blog</b></a> |
-  <a href="https://huggingface.co/papers/2606.14777"><b>📑 Report</b></a> |
   <a href="https://github.com/jd-opensource/JoyAI-VL-Interaction"><b>💻 Code</b></a> |
   <a href="https://huggingface.co/jdopensource/JoyAI-VL-Interaction-Preview"><b>🤗 Model</b></a> |
   <a href="https://huggingface.co/datasets/jdopensource/JoyAI-VL-Interaction"><b>📦 Dataset</b></a>
@@ -42,8 +41,7 @@
 ## 🔥 News
 
 - **[2026-06-20]** 🎉 Full open-source release — model weights, deployable system, and technical report are now available.
-- **[TODO]** Release aligned interaction training data.
-- **[TODO]** HuggingFace model & dataset pages.
+- **[2026-06-20]** 🎉 Release aligned interaction training data.
 
 [https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14](https://github.com/user-attachments/assets/2853fc95-ad21-4972-8206-5f3d19798b14)
 

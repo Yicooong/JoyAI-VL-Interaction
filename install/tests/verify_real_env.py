@@ -12,7 +12,7 @@ BASE_MODULES = [
     "av",
     "cv2",
     "httpx",
-    "live_vlm_webui.server",
+    "joy_interaction_webui.server",
     "numpy",
     "openai",
     "PIL",
@@ -139,7 +139,7 @@ def main() -> int:
         raise RuntimeError(f"expected vllm 0.22.0, got {version!r}")
     verify_vllm_web_stack()
 
-    for command in ["live-vlm-webui", "live-vlm-webui-stop", *OPTIONAL_COMMANDS[case]]:
+    for command in ["joy-interaction-webui", "joy-interaction-webui-stop", *OPTIONAL_COMMANDS[case]]:
         resolved = shutil.which(command)
         print(f"command {command}: {resolved}")
         if not resolved:

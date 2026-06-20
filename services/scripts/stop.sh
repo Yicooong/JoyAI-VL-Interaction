@@ -185,7 +185,7 @@ stop_background_agent() {
 stop_webui() {
   PIDS_TO_KILL=()
   add_pids_on_port "${WEBUI_PORT}"
-  add_pids_by_pattern "live_vlm_webui.server"
+  add_pids_by_pattern "joy_interaction_webui.server"
   add_pids_by_pattern "${SERVICES_DIR}/webui/scripts/start_server.sh"
   add_pids_by_pattern "services/webui/scripts/start_server.sh"
   kill_collected_pids "webui"

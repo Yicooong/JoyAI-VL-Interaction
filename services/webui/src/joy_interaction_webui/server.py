@@ -61,7 +61,7 @@ vlm_service = None  # Kept for backwards compat; default session uses sessions["
 websockets = set()  # Track active WebSocket connections (all)
 rtsp_tracks = {}  # Track active RTSP streams {session_id: (rtsp_track, processor_track)}
 
-# Multi-session state (0.4.0)
+# Multi-session state
 default_vlm_config = {}  # Set at startup; used to create new sessions
 sessions = {}  # session_id -> {"vlm_service": VLMService}
 session_websockets = defaultdict(set)  # session_id -> set of ws
@@ -507,18 +507,14 @@ async def websocket_handler(request):
 
                     if data.get("type") == "update_prompt":
                         new_prompt = data.get("prompt", "").strip()
-                        max_tokens = data.get("max_tokens")
                         if svc:
-                            svc.update_prompt(new_prompt, max_tokens)
-                            logger.info(
-                                f"[{session_id}] Prompt updated: {new_prompt}, max_tokens: {max_tokens}"
-                            )
+                            svc.update_prompt(new_prompt)
+                            logger.info(f"[{session_id}] Prompt updated: {new_prompt}")
 
                             await ws.send_json(
                                 {
                                     "type": "prompt_updated",
                                     "prompt": new_prompt,
-                                    "max_tokens": max_tokens,
                                 }
                             )
 
@@ -546,15 +542,6 @@ async def websocket_handler(request):
                                     "model": new_model,
                                     "api_base": svc.api_base,
                                 }
-                            )
-
-                    elif data.get("type") == "update_persona":
-                        persona = data.get("persona", "default").strip()
-                        if svc and persona in ("default", "silent", "talkative"):
-                            asyncio.create_task(svc.update_persona(persona))
-                            logger.info(f"[{session_id}] Persona updated: {persona}")
-                            await ws.send_json(
-                                {"type": "persona_updated", "persona": persona}
                             )
 
                     elif data.get("type") == "update_processing":
@@ -1268,10 +1255,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="WebRTC Joy VL Interaction - Real-time vision model interaction",
         epilog="Examples:\n"
-        "  vLLM:    python -m live_vlm_webui.server --model llama-3.2-11b-vision-instruct --api-base http://localhost:8000/v1\n"
-        "  SGLang:  python -m live_vlm_webui.server --model llama-3.2-11b-vision-instruct --api-base http://localhost:30000/v1\n"
-        "  Ollama:  python -m live_vlm_webui.server --model llava:7b --api-base http://localhost:11434/v1\n"
-        "  HTTPS:   python -m live_vlm_webui.server --model llava:7b --api-base http://localhost:11434/v1 --ssl-cert cert.pem --ssl-key key.pem",
+        "  vLLM:    python -m joy_interaction_webui.server --model llama-3.2-11b-vision-instruct --api-base http://localhost:8000/v1\n"
+        "  SGLang:  python -m joy_interaction_webui.server --model llama-3.2-11b-vision-instruct --api-base http://localhost:30000/v1\n"
+        "  Ollama:  python -m joy_interaction_webui.server --model llava:7b --api-base http://localhost:11434/v1\n"
+        "  HTTPS:   python -m joy_interaction_webui.server --model llava:7b --api-base http://localhost:11434/v1 --ssl-cert cert.pem --ssl-key key.pem",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
