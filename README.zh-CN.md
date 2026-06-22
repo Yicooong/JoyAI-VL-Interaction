@@ -87,6 +87,8 @@ cd JoyAI-VL-Interaction
 
 👉 如需完整部署 ASR、TTS、后台 agent 以及更多配置细节，请参阅[入门指南](doc/getting_started.zh-CN.md)。
 
+🚑 如果遇到部署问题，请参阅[故障排查指南](doc/troubleshooting.zh-CN.md)。
+
 ## 🛠️ 系统架构
 
 ![JoyAI-VL-Interaction system architecture](img/joyvl-system-architecture.png)
