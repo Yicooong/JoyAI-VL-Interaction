@@ -4,6 +4,16 @@
 
 Local FastAPI wrapper around the system `codex` CLI for background tasks.
 
+## Security Note
+
+We recommend running the Codex API service in an isolated environment. The service uses
+YOLO mode (`--dangerously-bypass-approvals-and-sandbox`) so background tasks can run without
+interactive approval, which also means the process should be treated as highly privileged.
+
+For safer deployment, wrap the Codex API service in Docker or start it under an isolated
+temporary user with a dedicated `CODEX_HOME` and workspace. Keep it bound to localhost unless
+you have added your own network-level access controls.
+
 ## Run
 
 The recommended path is to start it from the repository root with the component script:
