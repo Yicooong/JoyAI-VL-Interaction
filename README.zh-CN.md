@@ -181,7 +181,17 @@ JoyAI-VL-Interaction 的核心，是模型每秒自主做出的一个决策：**
 - [x] 发布可部署系统代码
 - [x] 发布技术报告
 - [x] 发布时间对齐交互训练数据
-- [x] 发布 HuggingFace 模型和数据集页面
+- [x] 发布 HuggingFace 模型
+- [ ] **在线 + 离线统一模型** —— 单一全能模型，同时擅长实时在线（流式）交互与离线视频理解
+- [ ] **Codec 版本** —— 搭载预测式视频编解码器（AdaCodec）的模型变体，降低长流场景下的 token 开销
+- [ ] **量化版本** —— 实现更轻量、更低成本的部署
+- [ ] **最优推理配置** —— 针对 RTX 3090 / 5090 调优的配置方案
+
+## 🙏 致谢
+
+* 基于 [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) 和 [EasyVideoR1](https://github.com/cyuQ1n/EasyVideoR1) 构建 —— 分别用于 SFT 和 RL 训练
+* 网页界面基于 [Live VLM WebUI](https://github.com/nvidia-ai-iot/live-vlm-webui) 开发 —— NVIDIA 开源的实时 VLM 网页界面
+* 兼容 [vLLM](https://github.com/vllm-project/vllm)
 
 ## 📝 引用
 

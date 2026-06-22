@@ -181,7 +181,17 @@ We evaluate JoyAI-VL-Interaction in **58 real, event-driven visual interaction s
 - [x] Release deployable system code
 - [x] Release technical report
 - [x] Release time-aligned interaction training data
-- [x] HuggingFace model & dataset pages
+- [x] HuggingFace model 
+- [ ] **Unified online + offline model** — a single full-capability model strong at both real-time online (streaming) interaction and offline video understanding
+- [ ] **Codec version** — model variant with the predictive video codec (AdaCodec) for lower token cost over long streams
+- [ ] **Quantized versions** — for lighter, lower-cost deployment
+- [ ] **Optimal inference configs** — tuned setups for RTX 3090 / 5090
+
+## 🙏 Acknowledgments
+
+* Built with [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) and [EasyVideoR1](https://github.com/cyuQ1n/EasyVideoR1) - training frameworks for SFT and RL
+* Built on [Live VLM WebUI](https://github.com/nvidia-ai-iot/live-vlm-webui) - NVIDIA's open-source real-time VLM web interface
+* Compatible with [vLLM](https://github.com/vllm-project/vllm)
 
 ## 📝 Citation
 
