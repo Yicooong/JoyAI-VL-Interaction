@@ -379,7 +379,10 @@ def build_parser() -> argparse.ArgumentParser:
     smoke.add_argument("--emotion", default="{{高兴}}")
     smoke.add_argument(
         "--instructions",
-        default="You are a helpful AI assistant. Please answer in Chinese.",
+        default=(
+            "Please speak at a slightly faster pace, around 1.2x normal speed, "
+            "while keeping pronunciation clear and natural."
+        ),
     )
     smoke.add_argument("--temperature", type=float, default=0.7)
     smoke.add_argument("--max-tokens", type=int, default=1024)

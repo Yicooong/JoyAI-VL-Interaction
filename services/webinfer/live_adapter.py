@@ -22,6 +22,7 @@ import functools
 import io
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -89,8 +90,13 @@ def _get_i18n(language: str = "en") -> dict[str, str]:
         "qa_response_label": QA_RESPONSE_LABEL_ZH,
     }
 DEFAULT_SAVE_ROOT = "result"
-TIME_RANGE_RE = re.compile(r"<(?P<range>\d+(?:\.\d+)?\s*seconds?)>")
-TIME_RANGE_VALUE_RE = re.compile(r"^(?P<range>\d+(?:\.\d+)?s-\d+(?:\.\d+)?s)$")
+TIME_RANGE_RE = re.compile(
+    r"<(?P<range>\d+(?:\.\d+)?\s*(?:seconds?|s)(?:\s*(?:~|-)\s*\d+(?:\.\d+)?\s*(?:seconds?|s))?)>"
+)
+TIME_RANGE_VALUE_RE = re.compile(
+    r"^(?P<range>\d+(?:\.\d+)?\s*(?:seconds?|s)\s*(?:~|-)\s*\d+(?:\.\d+)?\s*(?:seconds?|s))$"
+)
+TIME_VALUE_RE = re.compile(r"^(?P<value>\d+(?:\.\d+)?)(?:\s*(?:seconds?|s))$")
 DEFAULT_SYSTEM_PROMPT_EN = """You are a real-time video streaming assistant observing a continuous camera feed frame by frame. The last frame represents the current moment.
 ## Action Format
 At every inference step you MUST choose exactly one of the following three actions:
@@ -129,6 +135,7 @@ def reset_chunk_state() -> dict[str, Any]:
         "frame_time_ranges": [],
         "summarizer_frame_cache": [],
         "frame_count": 0,
+        "turn_count": 0,
         "api_msg_cache": [],
     }
 
@@ -137,9 +144,76 @@ def _parse_start_second(time_range: Optional[str]) -> float:
     if not time_range:
         return -1.0
     try:
-        return float(re.sub(r"\s*seconds?$", "", time_range.split("-")[0]))
+        start = re.split(r"\s*(?:-|~)\s*", str(time_range), maxsplit=1)[0].strip()
+        start = re.sub(r"\s*seconds?$", "", start).strip()
+        if start.endswith("s"):
+            start = start[:-1]
+        return float(start)
     except (ValueError, IndexError):
         return -1.0
+
+
+def _format_seconds_words(value: float) -> str:
+    rounded = math.floor(value * 10 + 0.5) / 10
+    return f"{rounded:.1f} seconds"
+
+
+def _parse_time_value_seconds(text: str) -> Optional[float]:
+    match = TIME_VALUE_RE.fullmatch(str(text or "").strip())
+    if not match:
+        return None
+    return float(match.group("value"))
+
+
+def _normalize_time_range_text(value: Any) -> Optional[str]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+
+    match = TIME_RANGE_RE.search(text)
+    if match:
+        text = match.group("range").strip()
+
+    match = TIME_VALUE_RE.fullmatch(text)
+    if match:
+        return _format_seconds_words(float(match.group("value")))
+
+    match = TIME_RANGE_VALUE_RE.fullmatch(text)
+    if match:
+        range_text = match.group("range")
+        separator = " ~ " if "~" in range_text else "-"
+        parts = re.split(r"\s*(?:~|-)\s*", range_text, maxsplit=1)
+        if len(parts) == 2:
+            start = _parse_time_value_seconds(parts[0])
+            end = _parse_time_value_seconds(parts[1])
+            if start is not None and end is not None:
+                return f"{_format_seconds_words(start)}{separator}{_format_seconds_words(end)}"
+        return range_text
+
+    return None
+
+
+def _format_time_span(time_ranges: list[str]) -> Optional[str]:
+    ranges = [str(tr).strip() for tr in time_ranges if str(tr or "").strip()]
+    if not ranges:
+        return None
+    if len(ranges) == 1:
+        return ranges[0]
+    return f"{ranges[0]} ~ {ranges[-1]}"
+
+
+def _format_batch_time_marker(time_ranges: list[str]) -> Optional[str]:
+    ranges = [str(tr).strip() for tr in time_ranges if str(tr or "").strip()]
+    return ranges[0] if ranges else None
+
+
+def _format_turn_time_range(time_ranges: list[str]) -> str:
+    ranges = [str(tr).strip() for tr in time_ranges if str(tr or "").strip()]
+    if not ranges:
+        return ""
+    if all(time_range == ranges[0] for time_range in ranges):
+        return ranges[0]
+    return " ~ ".join(ranges)
 
 
 def _extract_time_range_from_message(message: dict[str, Any]) -> Optional[str]:
@@ -159,6 +233,14 @@ def _extract_time_range_from_message(message: dict[str, Any]) -> Optional[str]:
 
 
 def _compute_chunk_frame_range(current_chunk: dict[str, Any]) -> str:
+    frame_time_ranges = [
+        str(time_range).strip()
+        for time_range in current_chunk.get("frame_time_ranges", [])
+        if str(time_range or "").strip()
+    ]
+    if frame_time_ranges:
+        return _format_time_span(frame_time_ranges) or "unknown"
+
     user_messages = [
         message for message in current_chunk.get("messages", [])
         if message.get("role") == "user"
@@ -271,6 +353,8 @@ def build_model_input_record(
     chunk_index: int,
     messages: list[dict[str, Any]],
     frame_count: int,
+    model: Optional[str] = None,
+    generation_kwargs: Optional[dict[str, Any]] = None,
     inference_skipped: bool = False,
     skip_reason: Optional[str] = None,
     image_paths: Optional[list[str]] = None,
@@ -278,20 +362,21 @@ def build_model_input_record(
     prefix_content: Optional[str] = None,
     prompt: Optional[str] = None,
 ) -> dict[str, Any]:
+    if inference_skipped:
+        return {
+            "http_payload_skipped": True,
+            "inference_skipped": True,
+            "skip_reason": skip_reason,
+            "would_be_messages": list(messages),
+        }
+
+    del chunk_index, frame_count, image_paths, frame_time_ranges, prefix_content, prompt
     record = {
-        "chunk_index": chunk_index,
-        "num_chunk_frames": frame_count,
-        "image_paths": list(image_paths or []),
-        "frame_time_ranges": list(frame_time_ranges or []),
+        "model": model,
         "messages": list(messages),
     }
-    if prefix_content:
-        record["prefix_content"] = prefix_content
-    if prompt is not None:
-        record["prompt"] = prompt
-    if inference_skipped:
-        record["inference_skipped"] = True
-        record["skip_reason"] = skip_reason
+    if generation_kwargs:
+        record.update(copy.deepcopy(generation_kwargs))
     return record
 
 
@@ -470,6 +555,7 @@ class SessionState:
     session_id: str
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     frame_count: int = 0
+    turn_count: int = 0
     chunk_index: int = 1
     current_chunk: dict[str, Any] = field(default_factory=reset_chunk_state)
     memory_state: dict[str, Any] = field(
@@ -483,7 +569,7 @@ class SessionState:
     long_term_history: list[dict[str, Any]] = field(default_factory=list)
     long_term_compression_next_index: int = 1
     async_summary_segment: dict[str, Any] = field(default_factory=reset_chunk_state)
-    async_next_summary_target_frames: int = 0
+    async_next_summary_target_turns: int = 0
     async_next_summary_index: int = 1
     async_pending_summary_jobs: list[dict[str, Any]] = field(default_factory=list)
     predictions: list[dict[str, Any]] = field(default_factory=list)
@@ -574,7 +660,7 @@ class StreamingInferAdapter:
             state.output_path = self._session_output_path(state, light=False)
             state.light_output_path = self._session_output_path(state, light=True)
             state.debug_input_dir = self._session_debug_input_dir(state)
-            state.async_next_summary_target_frames = self._async_first_summary_frames()
+            state.async_next_summary_target_turns = self._async_first_summary_turns()
             # Per-session frame directory
             frame_dir = Path(self.config.frame_save_dir) / session_id
             frame_dir.mkdir(parents=True, exist_ok=True)
@@ -982,6 +1068,7 @@ class StreamingInferAdapter:
         if not image_refs:
             return await self._forward_text_only(payload, client=client, model_name=model_name)
 
+        turn_count = len(state.predictions) + 1
         raw_prompt_text = _extract_user_prompt_text(messages)
         prompt_text = _strip_time_range_from_text(raw_prompt_text)
 
@@ -999,12 +1086,13 @@ class StreamingInferAdapter:
                 time_ranges.append(incoming_time_ranges[i])
             else:
                 time_ranges.append(self._time_range_for_frame(state.frame_count + i))
-        time_range = " ~ ".join(time_ranges) if len(time_ranges) > 1 else time_ranges[0]
+        time_range = _format_turn_time_range(time_ranges)
 
         image_paths = [self._resolve_frame_ref(ref, state) for ref in image_refs]
         LOGGER.info(
-            "[%s] frames=%d(+%d) chunk=%d time=%s prompt=%r",
+            "[%s] turn=%d frames=%d(+%d) chunk=%d time=%s prompt=%r",
             state.session_id,
+            turn_count,
             state.frame_count,
             len(image_refs),
             state.chunk_index,
@@ -1015,12 +1103,12 @@ class StreamingInferAdapter:
         query_text = self._update_query_state(state, prompt_text, time_ranges[0])
 
         await self._commit_required_async_summaries(
-            state, state.frame_count, non_blocking=True,
+            state, state.turn_count, non_blocking=True,
         )
 
         if (
             self.config.chunk > 0
-            and state.current_chunk["frame_count"] >= self.config.chunk
+            and state.current_chunk["turn_count"] >= self.config.chunk
         ):
             self._execute_pending_qa_archive(state)
             carry_response_records = []
@@ -1049,17 +1137,20 @@ class StreamingInferAdapter:
             await self._flush_chunk(state, use_async_summary=self._async_summary_enabled())
             if (
                 self._async_summary_enabled()
-                and state.async_summary_segment["frame_count"] > 0
+                and state.async_summary_segment["turn_count"] > 0
             ):
                 carry = copy.deepcopy(state.async_summary_segment)
                 carry_frames = carry["frame_count"]
+                carry_turns = carry["turn_count"]
                 carry["frame_count"] = 0
+                carry["turn_count"] = 0
                 carry["response_records"] = carry_response_records
                 carry["api_msg_cache"] = []
                 state.current_chunk = carry
                 LOGGER.info(
-                    "[%s] carried over %d unsummarized frames to new chunk",
+                    "[%s] carried over %d unsummarized turn(s), %d frame(s) to new chunk",
                     state.session_id,
+                    carry_turns,
                     carry_frames,
                 )
             else:
@@ -1073,6 +1164,9 @@ class StreamingInferAdapter:
             state.current_chunk["frame_time_ranges"].append(tr)
             state.current_chunk["summarizer_frame_cache"].append({"path": str(ip)})
             state.current_chunk["frame_count"] += 1
+
+        state.turn_count += 1
+        state.current_chunk["turn_count"] += 1
 
         user_message = self._build_internal_user_message(
             time_ranges=time_ranges,
@@ -1088,7 +1182,6 @@ class StreamingInferAdapter:
                 query_text=query_text,
             )
 
-        turn_count = len(state.predictions) + 1
         turn_input_record = {
             "source_message": messages[-1] if messages else None,
             "vllm_message": user_message,
@@ -1096,6 +1189,7 @@ class StreamingInferAdapter:
             "has_image": True,
             "image_path": str(image_paths[-1]),
             "image_paths_batch": [str(ip) for ip in image_paths],
+            "num_chunk_turns": state.current_chunk["turn_count"],
             "num_chunk_frames": state.current_chunk["frame_count"],
             "image_paths": list(state.current_chunk["image_paths"]),
             "frame_time_ranges": list(state.current_chunk["frame_time_ranges"]),
@@ -1128,10 +1222,14 @@ class StreamingInferAdapter:
             t_prompt_build_start = time.perf_counter()
             internal_messages, prefix_content = self._build_main_internal_messages(state)
             api_messages = self._build_cached_api_messages(state, internal_messages)
+            generation_kwargs = self._main_generation_kwargs(payload)
+            http_messages = self._build_main_http_messages(api_messages)
             turn_model_input_record = build_model_input_record(
                 chunk_index=state.chunk_index,
-                messages=internal_messages,
+                messages=http_messages,
                 frame_count=state.current_chunk["frame_count"],
+                model=model_name,
+                generation_kwargs=generation_kwargs,
                 image_paths=state.current_chunk["image_paths"],
                 frame_time_ranges=state.current_chunk["frame_time_ranges"],
                 prefix_content=prefix_content,
@@ -1146,7 +1244,15 @@ class StreamingInferAdapter:
             )
             t_prompt_build_end = time.perf_counter()
             inference_start = time.time()
-            raw_text, usage = await self._call_main_model(payload, api_messages, client=client, model_name=model_name, session_state=state)
+            raw_text, usage = await self._call_main_model(
+                payload,
+                api_messages,
+                client=client,
+                model_name=model_name,
+                session_state=state,
+                generation_kwargs=generation_kwargs,
+                http_messages=http_messages,
+            )
             inference_time = time.time() - inference_start
             t_inference_end = time.perf_counter()
             generated_text = (
@@ -1380,8 +1486,10 @@ class StreamingInferAdapter:
         content: list[dict[str, Any]] = []
         if query_text:
             content.append({"type": "text", "text": i18n["user_query_header"] + "\n" + query_text})
-        for tr, ip in zip(time_ranges, image_paths):
-            content.append({"type": "text", "text": f"<{tr}>"})
+        batch_time_marker = _format_batch_time_marker(time_ranges)
+        if batch_time_marker:
+            content.append({"type": "text", "text": f"<{batch_time_marker}>"})
+        for ip in image_paths:
             content.append(
                 {
                     "type": "image",
@@ -1454,6 +1562,16 @@ class StreamingInferAdapter:
         remaining = cache[1:len(internal_messages)]
         return [first_msg] + remaining
 
+    def _build_main_http_messages(
+        self,
+        api_messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        messages = list(api_messages)
+        system_prompt = self.config.system_prompt
+        if system_prompt:
+            messages = [{"role": "system", "content": system_prompt}] + messages
+        return messages
+
     async def _call_main_model(
         self,
         inbound_payload: dict[str, Any],
@@ -1462,13 +1580,13 @@ class StreamingInferAdapter:
         client: Optional[AsyncOpenAI] = None,
         model_name: Optional[str] = None,
         session_state: Optional["SessionState"] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        http_messages: Optional[list[dict[str, Any]]] = None,
     ) -> tuple[str, Optional[dict[str, Any]]]:
         client = client or self.main_client
         model_name = model_name or self.config.main_model
-        generation_kwargs = self._main_generation_kwargs(inbound_payload)
-        system_prompt = self.config.system_prompt
-        if system_prompt:
-            api_messages = [{"role": "system", "content": system_prompt}] + api_messages
+        generation_kwargs = generation_kwargs or self._main_generation_kwargs(inbound_payload)
+        api_messages = http_messages or self._build_main_http_messages(api_messages)
         response = await client.chat.completions.create(
             model=model_name,
             messages=api_messages,
@@ -1512,7 +1630,7 @@ class StreamingInferAdapter:
 
         if self.summarizer is not None and use_async_summary:
             await self._commit_required_async_summaries(
-                state, state.frame_count, non_blocking=False,
+                state, state.turn_count, non_blocking=False,
             )
         elif self.summarizer is not None:
             mid_term_entry, summary_time = await asyncio.to_thread(
@@ -1655,10 +1773,10 @@ class StreamingInferAdapter:
             and int(self.config.async_summary_lead_frames or 0) > 0
         )
 
-    def _async_first_summary_frames(self) -> int:
-        lead_frames = max(0, int(self.config.async_summary_lead_frames or 0))
+    def _async_first_summary_turns(self) -> int:
+        lead_turns = max(0, int(self.config.async_summary_lead_frames or 0))
         chunk = max(1, int(self.config.chunk or 1))
-        return max(1, chunk - lead_frames + 1) if lead_frames > 0 else chunk
+        return max(1, chunk - lead_turns + 1) if lead_turns > 0 else chunk
 
     def _append_async_summary_user_message(
         self,
@@ -1680,6 +1798,7 @@ class StreamingInferAdapter:
             segment["frame_time_ranges"].append(tr)
             segment["summarizer_frame_cache"].append({"path": ip})
             segment["frame_count"] += 1
+        segment["turn_count"] += 1
         segment["messages"].append(
             self._build_internal_user_message(
                 time_ranges=time_ranges,
@@ -1692,14 +1811,14 @@ class StreamingInferAdapter:
         if not self._async_summary_enabled():
             return
 
-        if state.async_next_summary_target_frames <= 0:
-            state.async_next_summary_target_frames = self._async_first_summary_frames()
-        if state.async_summary_segment["frame_count"] < state.async_next_summary_target_frames:
+        if state.async_next_summary_target_turns <= 0:
+            state.async_next_summary_target_turns = self._async_first_summary_turns()
+        if state.async_summary_segment["turn_count"] < state.async_next_summary_target_turns:
             return
 
         segment_snapshot = copy.deepcopy(state.async_summary_segment)
         summary_index = state.async_next_summary_index
-        required_frame_count = state.frame_count + max(
+        required_turn_count = state.turn_count + max(
             0, int(self.config.async_summary_lead_frames or 0) - 1
         )
         task = asyncio.create_task(
@@ -1715,27 +1834,28 @@ class StreamingInferAdapter:
         state.async_pending_summary_jobs.append(
             {
                 "summary_index": summary_index,
+                "submitted_turn_count": state.turn_count,
                 "submitted_frame_count": state.frame_count,
-                "required_frame_count": required_frame_count,
+                "required_turn_count": required_turn_count,
                 "task": task,
             }
         )
         LOGGER.info(
-            "[%s] submitted async mid-summary %d at frame=%d required_by=%d",
+            "[%s] submitted async mid-summary %d at turn=%d required_by_turn=%d",
             state.session_id,
             summary_index,
-            state.frame_count,
-            required_frame_count,
+            state.turn_count,
+            required_turn_count,
         )
 
         state.async_summary_segment = reset_chunk_state()
         state.async_next_summary_index += 1
-        state.async_next_summary_target_frames = max(1, int(self.config.chunk or 1))
+        state.async_next_summary_target_turns = max(1, int(self.config.chunk or 1))
 
     async def _commit_required_async_summaries(
         self,
         state: SessionState,
-        upto_frame_count: Optional[int] = None,
+        upto_turn_count: Optional[int] = None,
         wait_all: bool = False,
         non_blocking: bool = False,
     ) -> None:
@@ -1745,8 +1865,8 @@ class StreamingInferAdapter:
         while state.async_pending_summary_jobs:
             job = state.async_pending_summary_jobs[0]
             is_required = wait_all or (
-                upto_frame_count is not None
-                and job["required_frame_count"] <= upto_frame_count
+                upto_turn_count is not None
+                and job["required_turn_count"] <= upto_turn_count
             )
             if not is_required:
                 break
@@ -1758,8 +1878,10 @@ class StreamingInferAdapter:
             mid_term_entry, summary_time = await job["task"]
             wait_time = time.time() - wait_start
             mid_term_entry["async_summary"] = True
+            mid_term_entry["turn_count"] = job.get("submitted_turn_count", 0)
+            mid_term_entry["submitted_turn_count"] = job["submitted_turn_count"]
             mid_term_entry["submitted_frame_count"] = job["submitted_frame_count"]
-            mid_term_entry["required_frame_count"] = job["required_frame_count"]
+            mid_term_entry["required_turn_count"] = job["required_turn_count"]
             mid_term_entry["barrier_wait_time"] = round(wait_time, 3)
             state.async_pending_summary_jobs.pop(0)
 
@@ -1803,13 +1925,9 @@ def _extract_time_range_from_request(
         str(payload.get("frame_time_range") or ""),
     )
     for candidate in candidates:
-        candidate = (candidate or "").strip()
-        match = TIME_RANGE_RE.search(candidate)
-        if match:
-            return match.group("range")
-        match = TIME_RANGE_VALUE_RE.fullmatch(candidate)
-        if match:
-            return match.group("range")
+        normalized = _normalize_time_range_text(candidate)
+        if normalized:
+            return normalized
     return None
 
 
@@ -1896,14 +2014,9 @@ def _extract_time_ranges_from_request(
     if isinstance(ranges, list) and ranges:
         parsed: list[str] = []
         for r in ranges:
-            r_str = str(r).strip()
-            match = TIME_RANGE_RE.search(r_str)
-            if match:
-                parsed.append(match.group("range"))
-            else:
-                match = TIME_RANGE_VALUE_RE.fullmatch(r_str)
-                if match:
-                    parsed.append(match.group("range"))
+            normalized = _normalize_time_range_text(r)
+            if normalized:
+                parsed.append(normalized)
         if parsed:
             return parsed
 
@@ -1960,10 +2073,7 @@ def _extract_user_prompt_text(messages: list[dict[str, Any]]) -> str:
 
 
 def _extract_time_range_from_text(text: str) -> Optional[str]:
-    match = TIME_RANGE_RE.search(text or "")
-    if match:
-        return match.group("range")
-    return None
+    return _normalize_time_range_text(text)
 
 
 def _strip_time_range_from_text(text: str) -> str:
@@ -2234,6 +2344,7 @@ def parse_args() -> AdapterConfig:
         "--async-summary-lead-frames",
         type=int,
         default=_env_int("ASYNC_SUMMARY_LEAD_FRAMES", 10),
+        help="Generate async summaries this many turns before the chunk boundary. Name kept for compatibility.",
     )
     parser.add_argument(
         "--no-prompt-as-query",

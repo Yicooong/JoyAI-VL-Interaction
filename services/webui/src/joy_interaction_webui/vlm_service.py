@@ -23,6 +23,7 @@ import asyncio
 import base64
 import io
 import json
+import math
 import re
 import time
 from openai import AsyncOpenAI
@@ -31,6 +32,11 @@ from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _format_seconds_words(value: float) -> str:
+    rounded = math.floor(value * 10 + 0.5) / 10
+    return f"{rounded:.1f} seconds"
 
 
 class VLMService:
@@ -64,6 +70,7 @@ class VLMService:
         self.last_user_prompt = ""
         self._pending_background_handoff: Optional[dict] = None
         self._last_background_handoff_meta: Optional[dict] = None
+        self._timestamp_turn_count = 0
 
         # Metrics tracking
         self.last_inference_time = 0.0  # seconds
@@ -83,10 +90,53 @@ class VLMService:
         except (TypeError, ValueError):
             return str(timestamp)
 
-        if frame_metadata.get("timestamp_kind") == "relative_seconds":
-            return f"{timestamp_value:.3f}s"
+        return _format_seconds_words(timestamp_value)
 
-        return f"{timestamp_value:.3f}s"
+    def _normalize_timestamp_interval(self, interval_seconds) -> float:
+        try:
+            interval = float(interval_seconds)
+        except (TypeError, ValueError):
+            interval = 1.0
+        return max(0.0, interval)
+
+    def _next_turn_timestamp_metadata(self, interval_seconds) -> dict:
+        interval = self._normalize_timestamp_interval(interval_seconds)
+        turn_index = self._timestamp_turn_count
+        self._timestamp_turn_count += 1
+        return {
+            "timestamp": turn_index * interval,
+            "timestamp_kind": "turn_seconds",
+            "timestamp_turn": turn_index + 1,
+            "timestamp_interval_seconds": interval,
+        }
+
+    def _apply_turn_timestamp(self, metadata: Optional[dict], turn_metadata: dict) -> dict:
+        result = dict(metadata or {})
+        if "timestamp" in result:
+            result.setdefault("source_timestamp", result.get("timestamp"))
+        if "timestamp_kind" in result:
+            result.setdefault("source_timestamp_kind", result.get("timestamp_kind"))
+        result.update(turn_metadata)
+        return result
+
+    def _metadata_with_next_turn_timestamp(self, metadata: Optional[dict]) -> dict:
+        source = dict(metadata or {})
+        turn_metadata = self._next_turn_timestamp_metadata(
+            source.get("timestamp_interval_seconds")
+        )
+        return self._apply_turn_timestamp(source, turn_metadata)
+
+    def _batch_with_next_turn_timestamp(self, frames_data: list) -> list:
+        if not frames_data:
+            return []
+        first_frame = frames_data[0] if isinstance(frames_data[0], dict) else {}
+        turn_metadata = self._next_turn_timestamp_metadata(
+            first_frame.get("timestamp_interval_seconds")
+        )
+        return [
+            self._apply_turn_timestamp(frame_data, turn_metadata)
+            for frame_data in frames_data
+        ]
 
     async def analyze_image(
         self,
@@ -273,6 +323,7 @@ class VLMService:
         self.last_user_prompt = ""
         self._pending_background_handoff = None
         self._last_background_handoff_meta = None
+        self._timestamp_turn_count = 0
         self.last_inference_time = 0.0
         self.total_inferences = 0
         self.total_inference_time = 0.0
@@ -361,10 +412,13 @@ class VLMService:
                         captured_prompt,
                     )
                     self.last_user_prompt = str(used_prompt or "").strip()
+                    request_frame_metadata = self._metadata_with_next_turn_timestamp(
+                        frame_metadata
+                    )
                     response = await self.analyze_image(
                         image,
                         used_prompt,
-                        frame_metadata=frame_metadata,
+                        frame_metadata=request_frame_metadata,
                     )
                     if self._closed:
                         return
@@ -503,7 +557,8 @@ class VLMService:
                         captured_prompt,
                     )
                     self.last_user_prompt = str(used_prompt or "").strip()
-                    response = await self.analyze_images(frames_data, used_prompt)
+                    request_frames_data = self._batch_with_next_turn_timestamp(frames_data)
+                    response = await self.analyze_images(request_frames_data, used_prompt)
                     if self._closed:
                         return
                     self.current_response = response

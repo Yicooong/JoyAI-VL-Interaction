@@ -218,6 +218,7 @@ class VideoProcessorTrack(VideoStreamTrack):
                                     "timestamp": frame_timestamp,
                                     "timestamp_kind": timestamp_kind,
                                     "pts": frame.pts,
+                                    "timestamp_interval_seconds": interval_sec,
                                 },
                             )
                         )
@@ -246,6 +247,7 @@ class VideoProcessorTrack(VideoStreamTrack):
                             "image": pil_img,
                             "timestamp": frame_timestamp,
                             "timestamp_kind": timestamp_kind,
+                            "timestamp_interval_seconds": interval_sec,
                             "pts": frame.pts,
                             "frame_timing_ms": {
                                 "frame_to_ndarray_ms": 1000 * (t2 - t1),

@@ -28,7 +28,10 @@ TTS_TEMPERATURE = float(os.getenv("TTS_TEMPERATURE", "0.7"))
 TTS_MAX_TOKENS = int(os.getenv("TTS_MAX_TOKENS", "1024"))
 TTS_INSTRUCTIONS = os.getenv(
     "TTS_INSTRUCTIONS",
-    "You are a helpful AI assistant. Please answer in Chinese.",
+    (
+        "Please speak at a slightly faster pace, around 1.2x normal speed, "
+        "while keeping pronunciation clear and natural."
+    ),
 )
 TTS_PROXY = os.getenv("TTS_PROXY", "").strip() or None
 TTS_TRUST_ENV = os.getenv("TTS_TRUST_ENV", "1").lower() not in {
