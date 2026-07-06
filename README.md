@@ -189,6 +189,12 @@ We evaluate JoyAI-VL-Interaction in **58 real, event-driven visual interaction s
 - [ ] **Quantized versions** — for lighter, lower-cost deployment
 - [ ] **Optimal inference configs** — tuned setups for RTX 3090 / 5090
 
+## 😊 Community & Support
+
+<div align="center">
+  <img src="weixin.jpg" alt="qrcode3" width="50%" />
+</div>
+
 ## 🙏 Acknowledgments
 
 * Built with [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) and [EasyVideoR1](https://github.com/cyuQ1n/EasyVideoR1) - training frameworks for SFT and RL
