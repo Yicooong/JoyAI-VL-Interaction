@@ -39,6 +39,31 @@ Open in the browser:
 https://localhost:8099
 ```
 
+### Remote WebUI over SSH
+
+Webcam frames are uploaded through a same-origin WebSocket, which runs over TCP.
+For webcam mode, only the WebUI port needs to be forwarded; no UDP or extra
+WebRTC ports are needed:
+
+```bash
+ssh -L 8099:127.0.0.1:8099 user@remote-server
+```
+
+Then open `https://localhost:8099` in the local browser. Control messages, webcam
+frames, and WebUI HTTP requests all use this TCP tunnel.
+
+The media transport is selected with `WEBRTC_TRANSPORT`:
+
+```bash
+# Default: WebSocket/MJPEG over TCP (recommended for SSH tunnels)
+WEBRTC_TRANSPORT=tcp ./scripts/start_server.sh
+
+# Original WebRTC/ICE media path over UDP
+WEBRTC_TRANSPORT=udp ./scripts/start_server.sh
+```
+
+Only `tcp` and `udp` are accepted. An invalid value falls back to `tcp`.
+
 If the browser warns about a self-signed certificate, continue to the site. If certificate files are missing, generate them first:
 
 ```bash

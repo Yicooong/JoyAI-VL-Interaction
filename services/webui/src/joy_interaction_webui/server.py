@@ -51,12 +51,20 @@ from .asr import setup_asr_routes
 from .tts import setup_tts_routes
 from .background_model import BackgroundModelService
 from .local_file_server import setup_local_file_routes
+from .websocket_video import WebSocketVideoTrack
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+WEBRTC_TRANSPORT = os.environ.get("WEBRTC_TRANSPORT", "tcp").strip().lower()
+if WEBRTC_TRANSPORT not in {"tcp", "udp"}:
+    logger.warning(
+        "Invalid WEBRTC_TRANSPORT=%r; falling back to tcp", WEBRTC_TRANSPORT
+    )
+    WEBRTC_TRANSPORT = "tcp"
 
 # Global objects
 relay = MediaRelay()
@@ -381,6 +389,7 @@ async def detect_local_service_and_model():
 async def index(request):
     """Serve the main HTML page"""
     content = open(os.path.join(os.path.dirname(__file__), "static", "index.html"), "r").read()
+    content = content.replace("__WEBRTC_TRANSPORT__", WEBRTC_TRANSPORT)
     return web.Response(content_type="text/html", text=content)
 
 
@@ -521,6 +530,7 @@ async def websocket_handler(request):
                 "prompt": svc.prompt,
                 "process_interval": _VPT.process_interval_seconds,
                 "frames_per_batch": _VPT.frames_per_batch,
+                "webrtc_transport": WEBRTC_TRANSPORT,
                 "background_model": background_service.get_config()
                 if background_service
                 else None,
@@ -771,6 +781,50 @@ async def websocket_handler(request):
         logger.info(
             f"WebSocket client disconnected. session_id={session_id}, total clients: {len(websockets)}"
         )
+
+    return ws
+
+
+async def video_websocket_handler(request):
+    """Receive browser camera frames over TCP instead of WebRTC/ICE (UDP)."""
+    ws = web.WebSocketResponse(max_msg_size=4 * 1024**2)
+    await ws.prepare(request)
+
+    session_id = request.query.get("session_id", "").strip()
+    if not session_id:
+        await ws.close(code=1008, message=b"Missing session_id")
+        return ws
+
+    session = get_or_create_session(session_id)
+    source_track = WebSocketVideoTrack()
+    processor_track = VideoProcessorTrack(
+        source_track,
+        session["vlm_service"],
+        text_callback=get_session_callback(session_id),
+        background_service=session.get("background_service"),
+    )
+
+    async def consume_frames():
+        while True:
+            await processor_track.recv()
+
+    consumer = asyncio.create_task(consume_frames())
+    logger.info("[%s] Browser video WebSocket connected (TCP)", session_id)
+    try:
+        async for msg in ws:
+            if msg.type == web.WSMsgType.BINARY:
+                try:
+                    await source_track.put_jpeg(msg.data)
+                except Exception as error:
+                    logger.warning("[%s] Invalid WebSocket video frame: %s", session_id, error)
+            elif msg.type == web.WSMsgType.ERROR:
+                logger.error("[%s] Video WebSocket error: %s", session_id, ws.exception())
+    finally:
+        source_track.stop()
+        processor_track.stop()
+        consumer.cancel()
+        await asyncio.gather(consumer, return_exceptions=True)
+        logger.info("[%s] Browser video WebSocket disconnected", session_id)
 
     return ws
 
@@ -1147,6 +1201,7 @@ async def rtsp_start(request):
         data = await request.json()
         rtsp_url = data.get("rtsp_url")
         session_id = data.get("session_id", "default")
+        stream_to_browser = bool(data.get("stream_to_browser", False))
 
         if not rtsp_url:
             logger.warning("RTSP start request missing rtsp_url")
@@ -1203,7 +1258,9 @@ async def rtsp_start(request):
             finally:
                 logger.info(f"Frame consumption stopped for {session_id}")
 
-        frame_task = asyncio.create_task(consume_frames())
+        # The browser preview endpoint consumes the processor directly so it can
+        # return each processed frame as MJPEG over HTTP/TCP.
+        frame_task = None if stream_to_browser else asyncio.create_task(consume_frames())
 
         # Store reference with frame task
         rtsp_tracks[session_id] = (rtsp_track, processor_track, frame_task)
@@ -1226,6 +1283,56 @@ async def rtsp_start(request):
         return web.Response(
             status=500, content_type="application/json", text=json.dumps({"error": str(e)})
         )
+
+
+async def stream_rtsp_video(request):
+    """Return an already prepared RTSP session as an HTTP/TCP MJPEG stream."""
+    session_id = (request.query.get("session_id") or "").strip()
+    entry = rtsp_tracks.get(session_id)
+    if not session_id or entry is None:
+        return web.json_response({"error": "RTSP session was not found"}, status=404)
+
+    rtsp_track, processor_track, frame_task = entry
+    if frame_task is not None:
+        return web.json_response(
+            {"error": "RTSP session is not a browser stream"}, status=409
+        )
+
+    response = web.StreamResponse(
+        status=200,
+        headers={
+            "Content-Type": "multipart/x-mixed-replace; boundary=frame",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+        },
+    )
+    await response.prepare(request)
+    logger.info("[%s] Started RTSP preview over HTTP/TCP", session_id)
+    last_preview_at = 0.0
+    try:
+        while True:
+            frame = await processor_track.recv()
+            now = time.monotonic()
+            if now - last_preview_at < 0.1:
+                continue
+            last_preview_at = now
+            image_buffer = io.BytesIO()
+            frame.to_image().save(image_buffer, format="JPEG", quality=85)
+            jpeg = image_buffer.getvalue()
+            await response.write(
+                b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                + str(len(jpeg)).encode("ascii")
+                + b"\r\n\r\n"
+                + jpeg
+                + b"\r\n"
+            )
+    except (MediaStreamError, StopAsyncIteration, ConnectionResetError, asyncio.CancelledError):
+        logger.info("[%s] RTSP HTTP preview ended", session_id)
+    finally:
+        if session_id in rtsp_tracks:
+            await _stop_rtsp_session(session_id)
+
+    return response
 
 
 async def rtsp_stop(request):
@@ -1382,6 +1489,7 @@ async def create_app(test_mode=False):
     app.router.add_get("/models", models)
     app.router.add_get("/detect-services", detect_services)
     app.router.add_get("/ws", websocket_handler)
+    app.router.add_get("/ws/video", video_websocket_handler)
     setup_asr_routes(app)
     setup_tts_routes(app)
     setup_local_file_routes(app)
@@ -1395,6 +1503,7 @@ async def create_app(test_mode=False):
     app.router.add_post("/api/rtsp/start", rtsp_start)
     app.router.add_post("/api/rtsp/stop", rtsp_stop)
     app.router.add_get("/api/rtsp/status", rtsp_status)
+    app.router.add_get("/api/rtsp/stream", stream_rtsp_video)
 
     # Serve static files (images, etc.)
     # Always serve from static/images within the package (works for both pip and dev installs)

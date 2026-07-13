@@ -4119,6 +4119,11 @@ limitations under the License.
         let localStream = null;
         let videoStartAbortController = null;
         let websocket = null;
+        let videoWebSocket = null;
+        let videoFrameTimer = null;
+        let videoFrameCanvas = null;
+        let videoFrameCaptureBusy = false;
+        let webrtcTransport = '__WEBRTC_TRANSPORT__';
         let serverConfigApplied = false;
         let fadeTimeout = null;
         let lastText = '';
@@ -4167,7 +4172,7 @@ limitations under the License.
         let asrFinalFallbackTimer = null;
         let asrStopRequested = false;
         let mobileVoiceMode = false;
-        // Multi-session: one ID per page/tab; sent in WebSocket and /offer so this tab gets only its VLM output
+        // Multi-session: one ID per page/tab, shared by control and video requests.
         let sessionId = crypto.randomUUID ? crypto.randomUUID() : 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2);
         let isAnalysisRunning = false;
         let selectedCameraId = null;
@@ -8525,6 +8530,10 @@ limitations under the License.
                     appendOrUpdateBackgroundEntry(data);
                 } else if (data.type === 'server_config') {
                     // Server sent its current configuration (model, api_base, prompt)
+                    if (data.webrtc_transport === 'tcp' || data.webrtc_transport === 'udp') {
+                        webrtcTransport = data.webrtc_transport;
+                        console.log('Media transport:', webrtcTransport);
+                    }
                     if (data.model) {
                         document.getElementById('modelName').textContent = data.model;
                         // Also update the model select if it matches
@@ -8841,7 +8850,172 @@ limitations under the License.
             }
         }
 
-        // Start WebRTC (Webcam mode)
+        function closeVideoWebSocket() {
+            if (videoFrameTimer) {
+                clearInterval(videoFrameTimer);
+                videoFrameTimer = null;
+            }
+            videoFrameCaptureBusy = false;
+            if (videoWebSocket) {
+                videoWebSocket.onclose = null;
+                videoWebSocket.close();
+                videoWebSocket = null;
+            }
+        }
+
+        function captureVideoFrame(token) {
+            const ws = videoWebSocket;
+            if (
+                token !== streamStartToken ||
+                !localStream ||
+                !ws ||
+                ws.readyState !== WebSocket.OPEN ||
+                videoFrameCaptureBusy ||
+                ws.bufferedAmount > 2 * 1024 * 1024
+            ) {
+                return;
+            }
+            if (videoElement.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+                return;
+            }
+
+            const sourceWidth = videoElement.videoWidth || 1280;
+            const sourceHeight = videoElement.videoHeight || 720;
+            const width = Math.min(sourceWidth, 1280);
+            const height = Math.max(1, Math.round(sourceHeight * width / sourceWidth));
+            videoFrameCanvas ||= document.createElement('canvas');
+            videoFrameCanvas.width = width;
+            videoFrameCanvas.height = height;
+            videoFrameCanvas.getContext('2d').drawImage(videoElement, 0, 0, width, height);
+
+            videoFrameCaptureBusy = true;
+            videoFrameCanvas.toBlob(blob => {
+                videoFrameCaptureBusy = false;
+                if (
+                    blob && token === streamStartToken &&
+                    videoWebSocket === ws && ws.readyState === WebSocket.OPEN
+                ) {
+                    ws.send(blob);
+                }
+            }, 'image/jpeg', 0.78);
+        }
+
+        function startVideoWebSocket(token) {
+            return new Promise((resolve, reject) => {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const url = `${protocol}//${window.location.host}/ws/video?session_id=${encodeURIComponent(sessionId)}`;
+                const ws = new WebSocket(url);
+                videoWebSocket = ws;
+
+                ws.onopen = () => {
+                    if (videoWebSocket !== ws || token !== streamStartToken) {
+                        ws.close();
+                        reject(new Error('Video start was cancelled'));
+                        return;
+                    }
+                    captureVideoFrame(token);
+                    videoFrameTimer = setInterval(() => captureVideoFrame(token), 100);
+                    resolve();
+                };
+                ws.onerror = () => reject(new Error('Unable to open the TCP video WebSocket'));
+                ws.onclose = () => {
+                    if (videoWebSocket === ws) {
+                        videoWebSocket = null;
+                    }
+                    if (token === streamStartToken && isAnalysisRunning) {
+                        updateStatus('Video connection lost', 'disconnected');
+                    }
+                };
+            });
+        }
+
+        function waitForIceGathering(pc, timeoutMs = 5000) {
+            return new Promise(resolve => {
+                if (pc.iceGatheringState === 'complete') {
+                    resolve();
+                    return;
+                }
+                const checkState = () => {
+                    if (pc.iceGatheringState === 'complete') {
+                        pc.removeEventListener('icegatheringstatechange', checkState);
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                };
+                const timeout = setTimeout(() => {
+                    pc.removeEventListener('icegatheringstatechange', checkState);
+                    resolve();
+                }, timeoutMs);
+                pc.addEventListener('icegatheringstatechange', checkState);
+            });
+        }
+
+        function attachWebRtcStateHandlers(token) {
+            peerConnection.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', peerConnection?.iceConnectionState);
+                if (token !== streamStartToken || !peerConnection) return;
+                switch (peerConnection.iceConnectionState) {
+                    case 'connected':
+                    case 'completed':
+                        if (isAnalysisRunning) updateStatus('Streaming (WebRTC/UDP)', 'connected');
+                        break;
+                    case 'disconnected':
+                    case 'failed':
+                    case 'closed':
+                        updateStatus('Disconnected', 'disconnected');
+                        stop();
+                        break;
+                }
+            };
+        }
+
+        async function sendWebRtcOffer(rtspUrl = null) {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            await waitForIceGathering(peerConnection);
+            const payload = {
+                sdp: peerConnection.localDescription.sdp,
+                type: peerConnection.localDescription.type,
+                session_id: sessionId,
+            };
+            if (rtspUrl) payload.rtsp_url = rtspUrl;
+            const response = await fetch('/offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const answer = await response.json();
+            if (!response.ok) {
+                throw new Error(answer.error || 'WebRTC negotiation failed');
+            }
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+
+        async function startWebcamWebRtc(token) {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            attachWebRtcStateHandlers(token);
+            await sendWebRtcOffer();
+        }
+
+        async function startRtspWebRtc(rtspUrl, token) {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            peerConnection.ontrack = event => {
+                if (token !== streamStartToken || event.track.kind !== 'video') return;
+                const stream = event.streams?.[0] || new MediaStream([event.track]);
+                showProcessedVideoStream(stream, token);
+            };
+            attachWebRtcStateHandlers(token);
+            peerConnection.addTransceiver('video', { direction: 'recvonly' });
+            await sendWebRtcOffer(rtspUrl);
+        }
+
+        // Webcam frames use a same-origin WebSocket (TCP), so a normal SSH
+        // local port forward carries both the WebUI and the video stream.
         async function startWebcam(token) {
             try {
                 if (!websocket || websocket.readyState !== WebSocket.OPEN) {
@@ -8867,53 +9041,11 @@ limitations under the License.
 
                 updateStatus('Connecting...', 'processing');
                 showProcessedVideoStream(localStream, token);
-
-                peerConnection = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
-
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-
-                peerConnection.ontrack = (event) => {
-                    console.log('Received remote track');
-                };
-
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log('ICE connection state:', peerConnection.iceConnectionState);
-                    switch (peerConnection.iceConnectionState) {
-                        case 'connected':
-                            if (isAnalysisRunning) {
-                                updateStatus('Streaming', 'connected');
-                            }
-                            break;
-                        case 'disconnected':
-                        case 'failed':
-                        case 'closed':
-                            updateStatus('Disconnected', 'disconnected');
-                            stop();
-                            break;
-                    }
-                };
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                const response = await fetch('/offer', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sdp: peerConnection.localDescription.sdp,
-                        type: peerConnection.localDescription.type,
-                        session_id: sessionId,
-                    }),
-                });
-
-                const answer = await response.json();
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                if (webrtcTransport === 'udp') {
+                    await startWebcamWebRtc(token);
+                } else {
+                    await startVideoWebSocket(token);
+                }
 
             } catch (error) {
                 console.error('Error starting webcam:', error);
@@ -8923,7 +9055,8 @@ limitations under the License.
             }
         }
 
-        // Start RTSP mode
+        // Start RTSP mode. The processed preview is MJPEG over same-origin
+        // HTTP/TCP, so it also works through the WebUI SSH port forward.
         async function startRTSP(token) {
             try {
                 if (!websocket || websocket.readyState !== WebSocket.OPEN) {
@@ -8940,95 +9073,19 @@ limitations under the License.
                 }
 
                 updateStatus('Connecting to RTSP stream...', 'processing');
-
-                // Create WebRTC peer connection (no local stream needed for RTSP)
-                peerConnection = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
-
-                // Receive processed video from server
-                peerConnection.ontrack = (event) => {
-                    console.log('Received RTSP stream from server');
-                    if (event.track.kind === 'video') {
-                        const remoteStream = event.streams && event.streams[0]
-                            ? event.streams[0]
-                            : new MediaStream([event.track]);
-                        showProcessedVideoStream(remoteStream, token);
-                    }
-                };
-
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log('ICE connection state:', peerConnection.iceConnectionState);
-                    switch (peerConnection.iceConnectionState) {
-                        case 'connected':
-                            if (isAnalysisRunning) {
-                                updateStatus('Streaming', 'connected');
-                            }
-                            break;
-                        case 'disconnected':
-                        case 'failed':
-                        case 'closed':
-                            updateStatus('Disconnected', 'disconnected');
-                            stop();
-                            break;
-                    }
-                };
-
-                peerConnection.onconnectionstatechange = () => {
-                    console.log('Peer connection state:', peerConnection.connectionState);
-                };
-
-                peerConnection.onicegatheringstatechange = () => {
-                    console.log('ICE gathering state:', peerConnection.iceGatheringState);
-                };
-
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        console.log('Local ICE candidate:', event.candidate.candidate);
-                    } else {
-                        console.log('Local ICE candidate gathering complete');
-                    }
-                };
-
-                // Create offer (recvonly - we're only receiving video from server)
-                peerConnection.addTransceiver('video', { direction: 'recvonly' });
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                // Wait for ICE gathering to complete before sending offer (with timeout)
-                // This ensures all ICE candidates are embedded in the SDP
-                console.log('Waiting for ICE gathering to complete...');
-                await new Promise((resolve) => {
-                    if (peerConnection.iceGatheringState === 'complete') {
-                        resolve();
-                    } else {
-                        const checkState = () => {
-                            if (peerConnection.iceGatheringState === 'complete') {
-                                peerConnection.removeEventListener('icegatheringstatechange', checkState);
-                                resolve();
-                            }
-                        };
-                        peerConnection.addEventListener('icegatheringstatechange', checkState);
-
-                        // Timeout after 5 seconds - proceed anyway to avoid hanging
-                        setTimeout(() => {
-                            peerConnection.removeEventListener('icegatheringstatechange', checkState);
-                            console.warn('ICE gathering timeout - proceeding anyway');
-                            resolve();
-                        }, 5000);
-                    }
-                });
-                console.log('ICE gathering state:', peerConnection.iceGatheringState, '- sending offer');
-
-                // Send offer with RTSP URL and session to server
-                const response = await fetch('/offer', {
+                if (webrtcTransport === 'udp') {
+                    await startRtspWebRtc(rtspUrl, token);
+                    rtspUrlInput.disabled = true;
+                    document.getElementById('testRtspBtn').disabled = true;
+                    return;
+                }
+                const response = await fetch('/api/rtsp/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        sdp: peerConnection.localDescription.sdp,
-                        type: peerConnection.localDescription.type,
                         rtsp_url: rtspUrl,
                         session_id: sessionId,
+                        stream_to_browser: true,
                     })
                 });
 
@@ -9037,8 +9094,31 @@ limitations under the License.
                     throw new Error(error.error || 'Failed to connect to RTSP stream');
                 }
 
-                const answer = await response.json();
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                videoElement.style.display = 'none';
+                const element = httpVideoElements[0];
+                const streamUrl = new URL('/api/rtsp/stream', window.location.origin);
+                streamUrl.searchParams.set('session_id', sessionId);
+                element.style.display = 'block';
+                element.onload = () => {
+                    if (token !== streamStartToken) return;
+                    isAnalysisRunning = true;
+                    updatePromptAvailability();
+                    revealVideoWhenReady(token);
+                };
+                element.onerror = () => {
+                    if (token !== streamStartToken) return;
+                    updateStatus('RTSP stream ended', 'disconnected');
+                };
+                element.src = streamUrl.toString();
+
+                // Some Chromium builds do not emit load for an endless MJPEG response.
+                setTimeout(() => {
+                    if (token === streamStartToken && !isAnalysisRunning) {
+                        isAnalysisRunning = true;
+                        updatePromptAvailability();
+                        revealVideoWhenReady(token);
+                    }
+                }, 1000);
 
                 // Disable RTSP URL field and Test button while streaming
                 rtspUrlInput.disabled = true;
@@ -9050,10 +9130,6 @@ limitations under the License.
                 alert('Failed to connect to RTSP stream: ' + error.message);
                 setVideoWaitingForStream(false);
                 resetVideoButtons();
-                if (peerConnection) {
-                    peerConnection.close();
-                    peerConnection = null;
-                }
             }
         }
 
@@ -9084,6 +9160,7 @@ limitations under the License.
             }
 
             // Stop webcam (if in webcam mode)
+            closeVideoWebSocket();
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;

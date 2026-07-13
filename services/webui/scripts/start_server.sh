@@ -29,6 +29,9 @@ if [ ! -f cert.pem ] || [ ! -f key.pem ]; then
   bash "${SCRIPT_DIR}/generate_cert.sh"
 fi
 
+# tcp: WebSocket/MJPEG media, suitable for SSH tunnels; udp: WebRTC/ICE media.
+export WEBRTC_TRANSPORT="${WEBRTC_TRANSPORT:-tcp}"
+
 PYTHONPATH="src${PYTHONPATH:+:$PYTHONPATH}" python -m joy_interaction_webui.server \
   --ssl-cert cert.pem \
   --ssl-key key.pem \

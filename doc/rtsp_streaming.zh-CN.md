@@ -82,7 +82,7 @@ exec ffmpeg \
   -b:v 2500k \
   -c:a aac \
   -f rtsp \
-  -rtsp_transport udp \
+  -rtsp_transport tcp \
   "$RTSP_URL"
 ```
 
@@ -153,7 +153,7 @@ RTSP_URL=rtsp://127.0.0.1:8554/test bash ./rtsp/rtsp.sh ./videos/demo.mp4
 -b:v 2500k          视频码率 2500 kbps
 -c:a aac            音频转 AAC
 -f rtsp             输出 RTSP
--rtsp_transport udp 使用 UDP 推送 RTSP
+-rtsp_transport tcp 使用 TCP 推送 RTSP（`rtsp.sh` 的默认方式）
 ```
 
 如果输入视频没有音轨，并且你的 `ffmpeg` 在 `-c:a aac` 上报错，可以移除音频选项，或添加 `-an`。

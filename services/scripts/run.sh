@@ -31,6 +31,7 @@ Environment:
   START_BACKGROUND_AGENT=0    Disable background-agent when running all.
   WEBINFER_ARGS="..."         Extra args for services/webinfer/scripts/run.sh all.
   WEBUI_ARGS="..."            Extra args for services/webui/scripts/start_server.sh.
+  WEBRTC_TRANSPORT=tcp         WebUI media transport: tcp (default) or udp.
   SERVICE_READY_TIMEOUT=900   Max seconds to wait for backend readiness before WebUI.
   SERVICE_READY_INTERVAL=5    Seconds between backend readiness checks.
 EOF

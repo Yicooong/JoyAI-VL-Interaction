@@ -39,6 +39,30 @@ source ../.venv/bin/activate
 https://localhost:8099
 ```
 
+### 通过 SSH 使用远程 WebUI
+
+摄像头画面通过同源 WebSocket 上传，WebSocket 基于 TCP。因此使用摄像头模式时
+只需转发 WebUI 端口，无需转发 UDP 或额外的 WebRTC 端口：
+
+```bash
+ssh -L 8099:127.0.0.1:8099 user@remote-server
+```
+
+然后在本地浏览器打开 `https://localhost:8099`。控制消息、摄像头画面以及
+WebUI HTTP 请求都会经过这条 TCP 隧道。
+
+可以通过 `WEBRTC_TRANSPORT` 选择媒体传输方式：
+
+```bash
+# 默认：WebSocket/MJPEG 走 TCP，推荐用于 SSH 隧道
+WEBRTC_TRANSPORT=tcp ./scripts/start_server.sh
+
+# 原始 WebRTC/ICE 媒体链路走 UDP
+WEBRTC_TRANSPORT=udp ./scripts/start_server.sh
+```
+
+仅支持 `tcp` 和 `udp`；填写其他值时会自动回退到 `tcp`。
+
 如果浏览器提示自签名证书警告，请继续访问该站点。如果证书文件缺失，请先生成：
 
 ```bash

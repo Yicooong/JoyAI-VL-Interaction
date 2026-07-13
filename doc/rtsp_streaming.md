@@ -82,7 +82,7 @@ exec ffmpeg \
   -b:v 2500k \
   -c:a aac \
   -f rtsp \
-  -rtsp_transport udp \
+  -rtsp_transport tcp \
   "$RTSP_URL"
 ```
 
@@ -153,7 +153,7 @@ The main `ffmpeg` parameters are:
 -b:v 2500k          Use a 2500 kbps video bitrate
 -c:a aac            Transcode audio to AAC
 -f rtsp             Output RTSP
--rtsp_transport udp Push RTSP over UDP
+-rtsp_transport tcp Push RTSP over TCP (the default used by `rtsp.sh`)
 ```
 
 If the input video has no audio track and your `ffmpeg` build errors on `-c:a aac`, remove the audio option or add `-an`.
