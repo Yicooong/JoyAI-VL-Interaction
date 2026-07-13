@@ -229,7 +229,7 @@ async def cleanup_session(session_id: str, reset_adapter: bool = True) -> dict:
         except Exception as e:
             logger.warning("[%s] Failed to stop HTTP video track: %s", session_id, e)
 
-    # Stop all four source tracks before closing their independent VLM sessions.
+    # Stop all source tracks before closing their independent VLM sessions.
     for child_id in list(session_children.pop(session_id, set())):
         await cleanup_session(child_id, reset_adapter=reset_adapter)
     for children in session_children.values():
@@ -970,13 +970,26 @@ async def upload_video(request):
     return web.json_response({"file_id": file_id, "size": size})
 
 
-def resolve_library_video(relative_path: str) -> Path | None:
-    """Resolve an MP4 path strictly inside the configured server video library."""
+def resolve_video_library_root(requested_directory: str = "") -> Path | None:
+    """Resolve a user-selected server directory, falling back to the configured library."""
+    try:
+        root = (
+            Path(requested_directory).expanduser().resolve(strict=True)
+            if requested_directory
+            else video_library_dir.resolve(strict=True)
+        )
+    except (OSError, RuntimeError):
+        return None
+    return root if root.is_dir() else None
+
+
+def resolve_library_video(relative_path: str, library_root: Path) -> Path | None:
+    """Resolve an MP4 path strictly inside the selected server video library."""
     if not relative_path:
         return None
     try:
-        candidate = (video_library_dir / relative_path).resolve(strict=True)
-        candidate.relative_to(video_library_dir)
+        candidate = (library_root / relative_path).resolve(strict=True)
+        candidate.relative_to(library_root)
     except (OSError, RuntimeError, ValueError):
         return None
     if not candidate.is_file() or candidate.suffix.lower() != ".mp4":
@@ -984,14 +997,19 @@ def resolve_library_video(relative_path: str) -> Path | None:
     return candidate
 
 
-async def list_library_videos(_request):
-    """List reusable MP4 files from the configured server-side video directory."""
-    if not video_library_dir.is_dir():
-        return web.json_response({"directory": str(video_library_dir), "videos": []})
+async def list_library_videos(request):
+    """List reusable MP4 files from a selected server-side video directory."""
+    requested_directory = (request.query.get("directory") or "").strip()
+    library_root = resolve_video_library_root(requested_directory)
+    if library_root is None:
+        return web.json_response(
+            {"error": "The server video directory does not exist or is not a directory"},
+            status=400,
+        )
     videos = []
     try:
         paths = sorted(
-            (path for path in video_library_dir.rglob("*") if path.suffix.lower() == ".mp4"),
+            (path for path in library_root.rglob("*") if path.suffix.lower() == ".mp4"),
             key=lambda path: str(path).lower(),
         )
         for path in paths[:2000]:
@@ -999,7 +1017,7 @@ async def list_library_videos(_request):
                 continue
             resolved = path.resolve(strict=True)
             try:
-                relative_path = resolved.relative_to(video_library_dir).as_posix()
+                relative_path = resolved.relative_to(library_root).as_posix()
             except ValueError:
                 continue
             stat = resolved.stat()
@@ -1012,7 +1030,7 @@ async def list_library_videos(_request):
             )
     except OSError as e:
         return web.json_response({"error": f"Failed to scan video directory: {e}"}, status=500)
-    return web.json_response({"directory": str(video_library_dir), "videos": videos})
+    return web.json_response({"directory": str(library_root), "videos": videos})
 
 
 async def stream_uploaded_video(request):
@@ -1020,14 +1038,22 @@ async def stream_uploaded_video(request):
     session_id = (request.query.get("session_id") or "").strip()
     file_id = (request.query.get("file_id") or "").strip()
     server_path = (request.query.get("server_path") or "").strip()
+    requested_directory = (request.query.get("library_dir") or "").strip()
     loop_video = request.query.get("loop", "false").lower() in {"1", "true", "yes"}
     video_id = (request.query.get("video_id") or "1").strip()
-    if video_id not in {"1", "2", "3", "4"}:
+    if not video_id.isdecimal() or len(video_id) > 9 or int(video_id) < 1:
         return web.json_response({"error": "Invalid video_id"}, status=400)
+    video_id = str(int(video_id))
     upload = uploaded_videos.get(file_id) if file_id else None
     if upload and upload["session_id"] != session_id:
         upload = None
-    source_path = upload["path"] if upload else resolve_library_video(server_path)
+    library_root = resolve_video_library_root(requested_directory) if not upload else None
+    if upload:
+        source_path = upload["path"]
+    elif library_root:
+        source_path = resolve_library_video(server_path, library_root)
+    else:
+        source_path = None
     if not session_id or source_path is None:
         return web.json_response({"error": "Video file was not found"}, status=404)
 

@@ -831,10 +831,13 @@ limitations under the License.
 
         .video-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            grid-template-rows: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(var(--video-columns, 1), minmax(0, 1fr));
+            grid-template-rows: repeat(var(--video-rows, 1), minmax(0, 1fr));
             gap: 3px;
             min-height: 480px;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
             background: #111;
         }
 
@@ -857,6 +860,33 @@ limitations under the License.
             min-height: 0;
             overflow: hidden;
             background: #000;
+        }
+
+        .dynamic-video-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            min-width: 0;
+        }
+
+        .dynamic-video-row:first-child {
+            margin-top: 0;
+        }
+
+        .dynamic-video-row select {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .dynamic-video-row .icon-btn {
+            flex: 0 0 28px;
+        }
+
+        .add-video-btn {
+            width: auto;
+            margin-top: 8px;
+            padding: 7px 10px;
         }
 
         .video-tile video,
@@ -935,7 +965,8 @@ limitations under the License.
             display: block;
         }
 
-        video.mirrored {
+        video.mirrored,
+        .http-video-stream.mirrored {
             transform: scaleX(-1);
         }
 
@@ -1231,6 +1262,12 @@ limitations under the License.
             width: 100%;
             height: 100%;
             object-fit: contain;
+        }
+
+        .video-card.fullscreen .video-grid {
+            flex: 1 1 auto;
+            min-height: 0;
+            height: 100%;
         }
 
         .video-card.fullscreen .fullscreen-btn {
@@ -3786,25 +3823,23 @@ limitations under the License.
                             </select>
                         </div>
                         <div class="form-group" id="serverVideoInputs">
+                            <label for="serverVideoDirectory">Server video directory</label>
+                            <input type="text" id="serverVideoDirectory" placeholder="Use the server's configured video directory">
+                            <div class="input-hint" style="margin-bottom: 10px;">Enter an absolute path or a path supported by the server, then refresh</div>
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                <label style="margin-bottom: 0;">Four Server MP4 Files</label>
+                                <label style="margin-bottom: 0;">Server MP4 Files</label>
                                 <button class="icon-btn" id="refreshVideoLibraryBtn" type="button" title="Refresh server video library">
                                     <i data-lucide="refresh-cw"></i>
                                 </button>
                             </div>
-                            <select class="server-video-select" data-video-id="1"><option value="">Loading Video 1...</option></select>
-                            <select class="server-video-select" data-video-id="2" style="margin-top: 8px;"><option value="">Loading Video 2...</option></select>
-                            <select class="server-video-select" data-video-id="3" style="margin-top: 8px;"><option value="">Loading Video 3...</option></select>
-                            <select class="server-video-select" data-video-id="4" style="margin-top: 8px;"><option value="">Loading Video 4...</option></select>
+                            <div id="serverVideoRows"></div>
+                            <button class="btn btn-secondary add-video-btn" id="addServerVideoBtn" type="button">+ Add video</button>
                             <div class="input-hint" id="videoLibraryHint">Server directory is loading...</div>
                         </div>
                         <div class="form-group" id="videoFileInputs" style="display: none;">
-                            <label>Four MP4 Files</label>
-                            <input type="file" class="video-file-input" data-video-id="1" accept="video/mp4,.mp4" aria-label="Video 1 MP4">
-                            <input type="file" class="video-file-input" data-video-id="2" accept="video/mp4,.mp4" aria-label="Video 2 MP4" style="margin-top: 8px;">
-                            <input type="file" class="video-file-input" data-video-id="3" accept="video/mp4,.mp4" aria-label="Video 3 MP4" style="margin-top: 8px;">
-                            <input type="file" class="video-file-input" data-video-id="4" accept="video/mp4,.mp4" aria-label="Video 4 MP4" style="margin-top: 8px;">
-                            <div class="input-hint">Select one independent .mp4 file for each grid tile</div>
+                            <label>MP4 Files</label>
+                            <input type="file" class="video-file-input" id="videoFileInput" accept="video/mp4,.mp4" aria-label="MP4 video files" multiple>
+                            <div class="input-hint">Select any number of .mp4 files; the grid adapts automatically</div>
                         </div>
                         <div class="settings-item" style="padding-top: 4px;">
                             <div>
@@ -3888,21 +3923,6 @@ limitations under the License.
                         <video id="videoElement" autoplay playsinline muted></video>
                         <img id="httpVideoElement1" class="http-video-stream" alt="Processed video 1" style="display: none;">
                         <div class="tile-vlm-overlay" id="tileOverlay1" style="display: none;"></div>
-                    </div>
-                    <div class="video-tile" data-video-id="2">
-                        <span class="video-tile-label">Video 2</span>
-                        <img id="httpVideoElement2" class="http-video-stream" alt="Processed video 2">
-                        <div class="tile-vlm-overlay" id="tileOverlay2" style="display: none;"></div>
-                    </div>
-                    <div class="video-tile" data-video-id="3">
-                        <span class="video-tile-label">Video 3</span>
-                        <img id="httpVideoElement3" class="http-video-stream" alt="Processed video 3">
-                        <div class="tile-vlm-overlay" id="tileOverlay3" style="display: none;"></div>
-                    </div>
-                    <div class="video-tile" data-video-id="4">
-                        <span class="video-tile-label">Video 4</span>
-                        <img id="httpVideoElement4" class="http-video-stream" alt="Processed video 4">
-                        <div class="tile-vlm-overlay" id="tileOverlay4" style="display: none;"></div>
                     </div>
                 </div>
                 <div class="video-overlay" id="videoOverlay"></div>
@@ -4042,13 +4062,18 @@ limitations under the License.
         const jdLogo = document.getElementById('jdLogo');
         const videoElement = document.getElementById('videoElement');
         const videoGrid = document.getElementById('videoGrid');
-        const httpVideoElements = [1, 2, 3, 4].map(id => document.getElementById(`httpVideoElement${id}`));
-        const tileOverlays = [1, 2, 3, 4].map(id => document.getElementById(`tileOverlay${id}`));
-        const videoFileInputs = [...document.querySelectorAll('.video-file-input')];
+        let httpVideoElements = [...document.querySelectorAll('.http-video-stream')];
+        let tileOverlays = [...document.querySelectorAll('.tile-vlm-overlay')];
+        const videoFileInput = document.getElementById('videoFileInput');
         const videoFileMode = document.getElementById('videoFileMode');
         const serverVideoInputs = document.getElementById('serverVideoInputs');
         const uploadVideoInputs = document.getElementById('videoFileInputs');
-        const serverVideoSelects = [...document.querySelectorAll('.server-video-select')];
+        const serverVideoDirectory = document.getElementById('serverVideoDirectory');
+        const serverVideoRows = document.getElementById('serverVideoRows');
+        const addServerVideoBtn = document.getElementById('addServerVideoBtn');
+        let serverVideoSelects = [];
+        let serverVideoLibrary = [];
+        let loadedServerVideoDirectory = '';
         const refreshVideoLibraryBtn = document.getElementById('refreshVideoLibraryBtn');
         const videoLibraryHint = document.getElementById('videoLibraryHint');
         const loopVideoToggle = document.getElementById('loopVideoToggle');
@@ -4346,6 +4371,7 @@ limitations under the License.
                     rtspBetaWarning.style.display = 'flex';
                 } else if (source === 'file') {
                     videoGrid.classList.remove('single-mode');
+                    syncFileVideoLayout();
                     webcamControls.style.display = 'none';
                     rtspControls.style.display = 'none';
                     fileControls.style.display = 'block';
@@ -4365,31 +4391,136 @@ limitations under the License.
             return `${(value / (1024 * 1024)).toFixed(1)} MB`;
         }
 
+        function renderVideoTiles(count) {
+            const tileCount = Math.max(1, Number(count) || 1);
+            const columns = tileCount === 1 ? 1 : Math.ceil(Math.sqrt(tileCount));
+            const rows = Math.ceil(tileCount / columns);
+            const wasMirrored = videoElement.classList.contains('mirrored');
+
+            videoGrid.replaceChildren();
+            for (let index = 0; index < tileCount; index += 1) {
+                const videoId = index + 1;
+                const tile = document.createElement('div');
+                tile.className = 'video-tile';
+                tile.dataset.videoId = String(videoId);
+
+                const label = document.createElement('span');
+                label.className = 'video-tile-label';
+                label.textContent = `Video ${videoId}`;
+                tile.appendChild(label);
+
+                if (index === 0) {
+                    videoElement.style.display = 'block';
+                    videoElement.classList.toggle('mirrored', wasMirrored);
+                    tile.appendChild(videoElement);
+                }
+
+                const stream = document.createElement('img');
+                stream.id = `httpVideoElement${videoId}`;
+                stream.className = 'http-video-stream';
+                stream.alt = `Processed video ${videoId}`;
+                stream.style.display = 'none';
+                stream.classList.toggle('mirrored', wasMirrored);
+                tile.appendChild(stream);
+
+                const overlay = document.createElement('div');
+                overlay.id = `tileOverlay${videoId}`;
+                overlay.className = 'tile-vlm-overlay';
+                overlay.style.display = 'none';
+                tile.appendChild(overlay);
+                videoGrid.appendChild(tile);
+            }
+
+            videoGrid.style.setProperty('--video-columns', String(columns));
+            videoGrid.style.setProperty('--video-rows', String(rows));
+            httpVideoElements = [...videoGrid.querySelectorAll('.http-video-stream')];
+            tileOverlays = [...videoGrid.querySelectorAll('.tile-vlm-overlay')];
+        }
+
+        function selectedFileCount() {
+            return videoFileInput.files ? videoFileInput.files.length : 0;
+        }
+
+        function syncFileVideoLayout() {
+            const count = videoFileMode.value === 'server'
+                ? serverVideoSelects.length
+                : selectedFileCount();
+            renderVideoTiles(Math.max(1, count));
+        }
+
+        function fillServerVideoSelect(select, preferred = '') {
+            select.replaceChildren(new Option('Select a server MP4...', ''));
+            serverVideoLibrary.forEach(video => {
+                select.add(new Option(`${video.path} (${formatFileSize(video.size)})`, video.path));
+            });
+            if ([...select.options].some(option => option.value === preferred)) {
+                select.value = preferred;
+            }
+        }
+
+        function refreshServerVideoSelects() {
+            serverVideoSelects = [...serverVideoRows.querySelectorAll('.server-video-select')];
+            serverVideoSelects.forEach((select, index) => {
+                select.dataset.videoId = String(index + 1);
+                select.setAttribute('aria-label', `Server video ${index + 1}`);
+            });
+        }
+
+        function addServerVideoRow(preferred = '') {
+            const row = document.createElement('div');
+            row.className = 'dynamic-video-row';
+            const select = document.createElement('select');
+            select.className = 'server-video-select';
+            fillServerVideoSelect(select, preferred);
+            select.addEventListener('change', syncFileVideoLayout);
+
+            const removeButton = document.createElement('button');
+            removeButton.className = 'icon-btn';
+            removeButton.type = 'button';
+            removeButton.title = 'Remove video';
+            removeButton.setAttribute('aria-label', 'Remove video');
+            removeButton.textContent = '×';
+            removeButton.addEventListener('click', () => {
+                if (serverVideoRows.children.length === 1) {
+                    select.value = '';
+                    return;
+                }
+                row.remove();
+                refreshServerVideoSelects();
+                syncFileVideoLayout();
+            });
+
+            row.append(select, removeButton);
+            serverVideoRows.appendChild(row);
+            refreshServerVideoSelects();
+            syncFileVideoLayout();
+        }
+
         async function loadServerVideoLibrary() {
             refreshVideoLibraryBtn.disabled = true;
             videoLibraryHint.textContent = 'Loading server video library...';
             const previous = serverVideoSelects.map(select => select.value);
             try {
-                const response = await fetch('/api/video/library', { cache: 'no-store' });
+                const libraryUrl = new URL('/api/video/library', window.location.origin);
+                const requestedDirectory = serverVideoDirectory.value.trim();
+                if (requestedDirectory) libraryUrl.searchParams.set('directory', requestedDirectory);
+                const response = await fetch(libraryUrl, { cache: 'no-store' });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Failed to load video library');
+                serverVideoLibrary = data.videos;
+                loadedServerVideoDirectory = data.directory;
+                serverVideoDirectory.value = data.directory;
                 serverVideoSelects.forEach((select, index) => {
-                    select.innerHTML = '<option value="">Select a server MP4...</option>';
-                    data.videos.forEach(video => {
-                        const option = document.createElement('option');
-                        option.value = video.path;
-                        option.textContent = `${video.path} (${formatFileSize(video.size)})`;
-                        select.appendChild(option);
-                    });
                     const preferred = previous[index] || data.videos[index]?.path || '';
-                    if ([...select.options].some(option => option.value === preferred)) {
-                        select.value = preferred;
-                    }
+                    fillServerVideoSelect(select, preferred);
                 });
                 videoLibraryHint.textContent = data.videos.length
                     ? `${data.videos.length} MP4 file(s) in ${data.directory}`
                     : `No MP4 files found in ${data.directory}`;
             } catch (error) {
+                loadedServerVideoDirectory = '';
+                serverVideoLibrary = [];
+                serverVideoSelects.forEach(select => fillServerVideoSelect(select));
                 videoLibraryHint.textContent = `Unable to load server videos: ${error.message}`;
             } finally {
                 refreshVideoLibraryBtn.disabled = false;
@@ -4401,8 +4532,22 @@ limitations under the License.
             serverVideoInputs.style.display = serverMode ? 'block' : 'none';
             uploadVideoInputs.style.display = serverMode ? 'none' : 'block';
             if (serverMode) loadServerVideoLibrary();
+            syncFileVideoLayout();
         });
+        videoFileInput.addEventListener('change', syncFileVideoLayout);
+        addServerVideoBtn.addEventListener('click', () => addServerVideoRow());
         refreshVideoLibraryBtn.addEventListener('click', loadServerVideoLibrary);
+        serverVideoDirectory.addEventListener('input', () => {
+            loadedServerVideoDirectory = '';
+            videoLibraryHint.textContent = 'Directory changed. Refresh to load its MP4 files.';
+        });
+        serverVideoDirectory.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                loadServerVideoLibrary();
+            }
+        });
+        addServerVideoRow();
         loadServerVideoLibrary();
 
         // Clear RTSP status message when user types
@@ -8580,15 +8725,21 @@ limitations under the License.
             try {
                 const useServerLibrary = videoFileMode.value === 'server';
                 const serverPaths = serverVideoSelects.map(select => select.value);
-                const files = videoFileInputs.map(input => input.files && input.files[0]);
-                if (useServerLibrary && serverPaths.some(path => !path)) {
-                    alert('Please select all four server MP4 files');
+                const files = [...(videoFileInput.files || [])];
+                if (useServerLibrary && !loadedServerVideoDirectory) {
+                    alert('Please refresh and load the server video directory first');
                     setVideoWaitingForStream(false);
                     resetVideoButtons();
                     return;
                 }
-                if (!useServerLibrary && files.some(file => !file)) {
-                    alert('Please select all four local .mp4 files');
+                if (useServerLibrary && serverPaths.some(path => !path)) {
+                    alert('Please select a file for every server video row');
+                    setVideoWaitingForStream(false);
+                    resetVideoButtons();
+                    return;
+                }
+                if (!useServerLibrary && files.length === 0) {
+                    alert('Please select at least one local .mp4 file');
                     setVideoWaitingForStream(false);
                     resetVideoButtons();
                     return;
@@ -8603,14 +8754,20 @@ limitations under the License.
                     useServerLibrary ? 'Preparing server videos...' : 'Uploading local videos...',
                     'processing'
                 );
-                videoFileInputs.forEach(input => { input.disabled = true; });
+                videoFileInput.disabled = true;
+                serverVideoDirectory.disabled = true;
                 serverVideoSelects.forEach(select => { select.disabled = true; });
+                serverVideoRows.querySelectorAll('.icon-btn').forEach(button => { button.disabled = true; });
+                addServerVideoBtn.disabled = true;
                 videoFileMode.disabled = true;
                 refreshVideoLibraryBtn.disabled = true;
                 loopVideoToggle.disabled = true;
 
                 const videoSources = useServerLibrary
-                    ? serverPaths.map(serverPath => ({ server_path: serverPath }))
+                    ? serverPaths.map(serverPath => ({
+                        server_path: serverPath,
+                        library_dir: loadedServerVideoDirectory
+                    }))
                     : await Promise.all(files.map(async (file) => {
                     const formData = new FormData();
                     formData.append('video', file, file.name);
@@ -8627,7 +8784,8 @@ limitations under the License.
                     throw new DOMException('Video start was cancelled', 'AbortError');
                 }
 
-                updateStatus('Starting four server videos...', 'processing');
+                renderVideoTiles(videoSources.length);
+                updateStatus(`Starting ${videoSources.length} video stream(s)...`, 'processing');
 
                 videoElement.style.display = 'none';
                 const endedVideoIds = new Set();
@@ -8638,6 +8796,7 @@ limitations under the License.
                     const source = videoSources[index];
                     if (source.file_id) streamUrl.searchParams.set('file_id', source.file_id);
                     if (source.server_path) streamUrl.searchParams.set('server_path', source.server_path);
+                    if (source.library_dir) streamUrl.searchParams.set('library_dir', source.library_dir);
                     streamUrl.searchParams.set('video_id', videoId);
                     streamUrl.searchParams.set('loop', String(loopVideoToggle.checked));
                     element.style.display = 'block';
@@ -8961,8 +9120,11 @@ limitations under the License.
             if (testRtspBtn) {
                 testRtspBtn.disabled = false;
             }
-            videoFileInputs.forEach(input => { input.disabled = false; });
+            videoFileInput.disabled = false;
+            serverVideoDirectory.disabled = false;
             serverVideoSelects.forEach(select => { select.disabled = false; });
+            serverVideoRows.querySelectorAll('.icon-btn').forEach(button => { button.disabled = false; });
+            addServerVideoBtn.disabled = false;
             videoFileMode.disabled = false;
             refreshVideoLibraryBtn.disabled = false;
             loopVideoToggle.disabled = false;
