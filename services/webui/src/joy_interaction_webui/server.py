@@ -19,6 +19,7 @@ Main server that handles WebRTC connections and serves the web interface
 """
 
 import asyncio
+import io
 import json
 import logging
 import os
@@ -26,9 +27,11 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from collections import defaultdict
+from pathlib import Path
 
 import aiohttp
 from aiohttp import web
@@ -38,7 +41,8 @@ from aiortc import (
     RTCConfiguration,
     RTCIceServer,
 )
-from aiortc.contrib.media import MediaRelay
+from aiortc.contrib.media import MediaPlayer, MediaRelay
+from aiortc.mediastreams import MediaStreamError
 
 from .vlm_service import VLMService
 from .video_processor import VideoProcessorTrack
@@ -60,6 +64,12 @@ pcs = set()
 vlm_service = None  # Kept for backwards compat; default session uses sessions["default"]
 websockets = set()  # Track active WebSocket connections (all)
 rtsp_tracks = {}  # Track active RTSP streams {session_id: (rtsp_track, processor_track)}
+uploaded_videos = {}  # file_id -> {path, session_id}
+http_video_tracks = defaultdict(set)  # session_id -> source tracks used by MJPEG responses
+video_upload_dir = Path(tempfile.gettempdir()) / "joy-interaction-webui-uploads"
+video_library_dir = Path(
+    os.environ.get("LIVE_VLM_VIDEO_DIR", str(Path.cwd() / "videos"))
+).expanduser().resolve()
 
 # Multi-session state
 default_vlm_config = {}  # Set at startup; used to create new sessions
@@ -67,6 +77,7 @@ sessions = {}  # session_id -> {"vlm_service": VLMService}
 session_websockets = defaultdict(set)  # session_id -> set of ws
 ws_to_session = {}  # ws -> session_id
 session_peer_connections = defaultdict(set)  # session_id -> set of RTCPeerConnection
+session_children = defaultdict(set)  # parent UI session -> per-video VLM sessions
 
 
 def notify_session_json(session_id: str, payload: dict):
@@ -211,6 +222,26 @@ async def cleanup_session(session_id: str, reset_adapter: bool = True) -> dict:
 
     if session_id in rtsp_tracks:
         await _stop_rtsp_session(session_id)
+
+    for track in list(http_video_tracks.pop(session_id, set())):
+        try:
+            track.stop()
+        except Exception as e:
+            logger.warning("[%s] Failed to stop HTTP video track: %s", session_id, e)
+
+    # Stop all four source tracks before closing their independent VLM sessions.
+    for child_id in list(session_children.pop(session_id, set())):
+        await cleanup_session(child_id, reset_adapter=reset_adapter)
+    for children in session_children.values():
+        children.discard(session_id)
+
+    for file_id, upload in list(uploaded_videos.items()):
+        if upload["session_id"] == session_id:
+            try:
+                upload["path"].unlink(missing_ok=True)
+            except OSError as e:
+                logger.warning("[%s] Failed to remove uploaded video: %s", session_id, e)
+            uploaded_videos.pop(file_id, None)
 
     pcs_for_session = list(session_peer_connections.pop(session_id, set()))
     for pc in pcs_for_session:
@@ -509,6 +540,10 @@ async def websocket_handler(request):
                         new_prompt = data.get("prompt", "").strip()
                         if svc:
                             svc.update_prompt(new_prompt)
+                            for child_id in session_children.get(session_id, set()):
+                                child = sessions.get(child_id)
+                                if child and child.get("vlm_service"):
+                                    child["vlm_service"].update_prompt(new_prompt)
                             logger.info(f"[{session_id}] Prompt updated: {new_prompt}")
 
                             await ws.send_json(
@@ -535,6 +570,17 @@ async def websocket_handler(request):
                                 )
                             else:
                                 logger.info(f"[{session_id}] Model updated: {new_model}")
+
+                            for child_id in session_children.get(session_id, set()):
+                                child = sessions.get(child_id)
+                                if not child or not child.get("vlm_service"):
+                                    continue
+                                child_svc = child["vlm_service"]
+                                child_svc.model = new_model
+                                if api_base:
+                                    child_svc.update_api_settings(
+                                        api_base, api_key if api_key else None
+                                    )
 
                             await ws.send_json(
                                 {
@@ -751,7 +797,7 @@ def broadcast_text_update(text: str, metrics: dict):
 
 
 async def offer(request):
-    """Handle WebRTC offer from client (supports both webcam and RTSP). Uses session_id for per-session VLM."""
+    """Handle WebRTC offer from webcam or RTSP."""
     params = await request.json()
     offer_sdp = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
     rtsp_url = params.get("rtsp_url")  # Optional RTSP URL for IP camera mode
@@ -889,6 +935,177 @@ async def session_cleanup(request):
     reset_adapter = bool(data.get("reset_adapter", True))
     result = await cleanup_session(session_id, reset_adapter=reset_adapter)
     return web.Response(content_type="application/json", text=json.dumps(result))
+
+
+async def upload_video(request):
+    """Stream an MP4 upload to server disk and return an opaque file id."""
+    session_id = (request.query.get("session_id") or "").strip()
+    if not session_id:
+        return web.json_response({"error": "Missing session_id parameter"}, status=400)
+
+    reader = await request.multipart()
+    field = await reader.next()
+    if field is None or field.name != "video" or not field.filename:
+        return web.json_response({"error": "Missing video file"}, status=400)
+    if not field.filename.lower().endswith(".mp4"):
+        return web.json_response({"error": "Only .mp4 files are supported"}, status=400)
+
+    video_upload_dir.mkdir(parents=True, exist_ok=True)
+    file_id = uuid.uuid4().hex
+    path = video_upload_dir / f"{file_id}.mp4"
+    size = 0
+    try:
+        with path.open("wb") as output:
+            while chunk := await field.read_chunk(size=1024 * 1024):
+                output.write(chunk)
+                size += len(chunk)
+        if size == 0:
+            raise ValueError("The uploaded file is empty")
+    except Exception as e:
+        path.unlink(missing_ok=True)
+        return web.json_response({"error": f"Failed to save upload: {e}"}, status=400)
+
+    uploaded_videos[file_id] = {"path": path, "session_id": session_id}
+    logger.info("[%s] Saved MP4 upload %s (%s bytes)", session_id, file_id, size)
+    return web.json_response({"file_id": file_id, "size": size})
+
+
+def resolve_library_video(relative_path: str) -> Path | None:
+    """Resolve an MP4 path strictly inside the configured server video library."""
+    if not relative_path:
+        return None
+    try:
+        candidate = (video_library_dir / relative_path).resolve(strict=True)
+        candidate.relative_to(video_library_dir)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    if not candidate.is_file() or candidate.suffix.lower() != ".mp4":
+        return None
+    return candidate
+
+
+async def list_library_videos(_request):
+    """List reusable MP4 files from the configured server-side video directory."""
+    if not video_library_dir.is_dir():
+        return web.json_response({"directory": str(video_library_dir), "videos": []})
+    videos = []
+    try:
+        paths = sorted(
+            (path for path in video_library_dir.rglob("*") if path.suffix.lower() == ".mp4"),
+            key=lambda path: str(path).lower(),
+        )
+        for path in paths[:2000]:
+            if not path.is_file():
+                continue
+            resolved = path.resolve(strict=True)
+            try:
+                relative_path = resolved.relative_to(video_library_dir).as_posix()
+            except ValueError:
+                continue
+            stat = resolved.stat()
+            videos.append(
+                {
+                    "path": relative_path,
+                    "name": resolved.name,
+                    "size": stat.st_size,
+                }
+            )
+    except OSError as e:
+        return web.json_response({"error": f"Failed to scan video directory: {e}"}, status=500)
+    return web.json_response({"directory": str(video_library_dir), "videos": videos})
+
+
+async def stream_uploaded_video(request):
+    """Process an uploaded MP4 and return frames as an HTTP multipart MJPEG stream."""
+    session_id = (request.query.get("session_id") or "").strip()
+    file_id = (request.query.get("file_id") or "").strip()
+    server_path = (request.query.get("server_path") or "").strip()
+    loop_video = request.query.get("loop", "false").lower() in {"1", "true", "yes"}
+    video_id = (request.query.get("video_id") or "1").strip()
+    if video_id not in {"1", "2", "3", "4"}:
+        return web.json_response({"error": "Invalid video_id"}, status=400)
+    upload = uploaded_videos.get(file_id) if file_id else None
+    if upload and upload["session_id"] != session_id:
+        upload = None
+    source_path = upload["path"] if upload else resolve_library_video(server_path)
+    if not session_id or source_path is None:
+        return web.json_response({"error": "Video file was not found"}, status=404)
+
+    parent_session = get_or_create_session(session_id)
+    child_session_id = f"{session_id}:video-{video_id}"
+    session_children[session_id].add(child_session_id)
+    session = get_or_create_session(child_session_id)
+    parent_vlm = parent_session["vlm_service"]
+    child_vlm = session["vlm_service"]
+    child_vlm.model = parent_vlm.model
+    child_vlm.update_api_settings(parent_vlm.api_base, parent_vlm.api_key)
+    child_vlm.update_prompt(parent_vlm.prompt or "")
+
+    def video_callback(text: str, metrics: dict):
+        send_to_session(
+            session_id,
+            json.dumps(
+                {
+                    "type": "vlm_response",
+                    "video_id": video_id,
+                    "text": text,
+                    "metrics": metrics,
+                },
+                ensure_ascii=False,
+            ),
+        )
+    try:
+        player = MediaPlayer(str(source_path), loop=loop_video)
+        if player.video is None:
+            raise ValueError("The uploaded MP4 does not contain a video track")
+    except Exception as e:
+        logger.exception("[%s] Failed to open uploaded MP4", session_id)
+        return web.json_response({"error": f"Failed to open uploaded MP4: {e}"}, status=400)
+
+    source_track = player.video
+    processor_track = VideoProcessorTrack(
+        source_track,
+        session["vlm_service"],
+        text_callback=video_callback,
+        background_service=session.get("background_service"),
+    )
+    http_video_tracks[session_id].add(source_track)
+    response = web.StreamResponse(
+        status=200,
+        headers={
+            "Content-Type": "multipart/x-mixed-replace; boundary=frame",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+        },
+    )
+    await response.prepare(request)
+    logger.info("[%s] Started HTTP MJPEG stream video=%s (loop=%s)", session_id, video_id, loop_video)
+
+    try:
+        while True:
+            frame = await processor_track.recv()
+            image_buffer = io.BytesIO()
+            frame.to_image().save(image_buffer, format="JPEG", quality=85)
+            jpeg = image_buffer.getvalue()
+            await response.write(
+                b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                + str(len(jpeg)).encode("ascii")
+                + b"\r\n\r\n"
+                + jpeg
+                + b"\r\n"
+            )
+    except (MediaStreamError, StopAsyncIteration, ConnectionResetError, asyncio.CancelledError):
+        logger.info("[%s] HTTP video stream ended", session_id)
+    finally:
+        processor_track.stop()
+        source_track.stop()
+        tracks = http_video_tracks.get(session_id)
+        if tracks is not None:
+            tracks.discard(source_track)
+            if not tracks:
+                http_video_tracks.pop(session_id, None)
+
+    return response
 
 
 async def rtsp_start(request):
@@ -1134,7 +1351,7 @@ async def create_app(test_mode=False):
         Configured web.Application instance
     """
     # Create web application
-    app = web.Application()
+    app = web.Application(client_max_size=2 * 1024**3)
     app.router.add_get("/", index)
     app.router.add_get("/models", models)
     app.router.add_get("/detect-services", detect_services)
@@ -1144,6 +1361,9 @@ async def create_app(test_mode=False):
     setup_local_file_routes(app)
     app.router.add_post("/offer", offer)
     app.router.add_post("/api/session/cleanup", session_cleanup)
+    app.router.add_post("/api/video/upload", upload_video)
+    app.router.add_get("/api/video/library", list_library_videos)
+    app.router.add_get("/api/video/stream", stream_uploaded_video)
 
     # RTSP endpoints
     app.router.add_post("/api/rtsp/start", rtsp_start)
@@ -1289,6 +1509,11 @@ def main():
         default="",
         help="Initial prompt to send to VLM (default: empty, waits for user input)",
     )
+    parser.add_argument(
+        "--video-dir",
+        default=os.environ.get("LIVE_VLM_VIDEO_DIR", str(Path.cwd() / "videos")),
+        help="Server directory containing reusable MP4 files (env: LIVE_VLM_VIDEO_DIR)",
+    )
     # Get default SSL cert paths (platform-specific)
     default_config_dir = get_app_config_dir()
     default_cert_path = str(default_config_dir / "cert.pem")
@@ -1377,7 +1602,9 @@ def main():
                 logger.warning("   Or use WebUI to configure API settings after starting")
 
     # Initialize VLM service and default session for multi-session support
-    global vlm_service, default_vlm_config
+    global vlm_service, default_vlm_config, video_library_dir
+    video_library_dir = Path(args.video_dir).expanduser().resolve()
+    logger.info("Server video library: %s", video_library_dir)
     vlm_service = VLMService(model=model, api_base=api_base, api_key=api_key, prompt=args.prompt)
     default_vlm_config = {
         "model": model,

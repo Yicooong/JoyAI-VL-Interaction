@@ -824,11 +824,76 @@ limitations under the License.
             background: #000;
         }
 
-        .video-card.waiting-for-stream video {
+        .video-card.waiting-for-stream video,
+        .video-card.waiting-for-stream .http-video-stream {
             visibility: hidden;
         }
 
-        video {
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+            gap: 3px;
+            min-height: 480px;
+            background: #111;
+        }
+
+        .video-grid.single-mode {
+            display: block;
+            min-height: 240px;
+        }
+
+        .video-grid.single-mode .video-tile:not(:first-child) {
+            display: none;
+        }
+
+        .video-grid.single-mode .video-tile-label {
+            display: none;
+        }
+
+        .video-tile {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-tile video,
+        .video-tile .http-video-stream {
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+        }
+
+        .video-tile-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 4;
+            padding: 3px 8px;
+            border-radius: 5px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.68);
+            font-size: 12px;
+        }
+
+        .tile-vlm-overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 3;
+            padding: 8px 10px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            font-size: 12px;
+            max-height: 42%;
+            overflow: auto;
+        }
+
+        video,
+        .http-video-stream {
             width: 100%;
             flex: 1;
             min-height: 240px;
@@ -1161,7 +1226,8 @@ limitations under the License.
             border: none;
         }
 
-        .video-card.fullscreen video {
+        .video-card.fullscreen video,
+        .video-card.fullscreen .http-video-stream {
             width: 100%;
             height: 100%;
             object-fit: contain;
@@ -2945,10 +3011,16 @@ limitations under the License.
                 flex: 0 0 auto;
             }
 
-            .video-card video {
+            .video-card video,
+            .video-card .http-video-stream {
                 min-height: 0;
                 height: 100%;
                 flex: 1 1 auto;
+            }
+
+            .video-grid {
+                min-height: 0;
+                height: 100%;
             }
 
             .video-controls {
@@ -3664,6 +3736,10 @@ limitations under the License.
                             RTSP Stream
                             <span class="beta-badge">BETA</span>
                         </button>
+                        <button class="input-source-tab" data-source="file">
+                            <i data-lucide="file-video" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            Local MP4
+                        </button>
                     </div>
 
                     <!-- Webcam Controls -->
@@ -3697,6 +3773,48 @@ limitations under the License.
                             </div>
                             <input type="text" id="rtspUrl" placeholder="rtsp://192.168.1.100:554/stream" style="margin-bottom: 16px;">
                             <div id="rtspStatus" class="input-hint" style="margin-top: -8px; margin-bottom: 12px; display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Local MP4 Controls -->
+                    <div id="fileControls" style="display: none;">
+                        <div class="form-group">
+                            <label>File Location</label>
+                            <select id="videoFileMode">
+                                <option value="server" selected>Server video library</option>
+                                <option value="upload">Upload from this computer</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="serverVideoInputs">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <label style="margin-bottom: 0;">Four Server MP4 Files</label>
+                                <button class="icon-btn" id="refreshVideoLibraryBtn" type="button" title="Refresh server video library">
+                                    <i data-lucide="refresh-cw"></i>
+                                </button>
+                            </div>
+                            <select class="server-video-select" data-video-id="1"><option value="">Loading Video 1...</option></select>
+                            <select class="server-video-select" data-video-id="2" style="margin-top: 8px;"><option value="">Loading Video 2...</option></select>
+                            <select class="server-video-select" data-video-id="3" style="margin-top: 8px;"><option value="">Loading Video 3...</option></select>
+                            <select class="server-video-select" data-video-id="4" style="margin-top: 8px;"><option value="">Loading Video 4...</option></select>
+                            <div class="input-hint" id="videoLibraryHint">Server directory is loading...</div>
+                        </div>
+                        <div class="form-group" id="videoFileInputs" style="display: none;">
+                            <label>Four MP4 Files</label>
+                            <input type="file" class="video-file-input" data-video-id="1" accept="video/mp4,.mp4" aria-label="Video 1 MP4">
+                            <input type="file" class="video-file-input" data-video-id="2" accept="video/mp4,.mp4" aria-label="Video 2 MP4" style="margin-top: 8px;">
+                            <input type="file" class="video-file-input" data-video-id="3" accept="video/mp4,.mp4" aria-label="Video 3 MP4" style="margin-top: 8px;">
+                            <input type="file" class="video-file-input" data-video-id="4" accept="video/mp4,.mp4" aria-label="Video 4 MP4" style="margin-top: 8px;">
+                            <div class="input-hint">Select one independent .mp4 file for each grid tile</div>
+                        </div>
+                        <div class="settings-item" style="padding-top: 4px;">
+                            <div>
+                                <div class="settings-item-label">Loop Playback</div>
+                                <div class="settings-item-description">Restart the video automatically when it ends</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="loopVideoToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
                     <div class="form-group">
@@ -3764,7 +3882,29 @@ limitations under the License.
                     </button>
                 </div>
 
-                <video id="videoElement" autoplay playsinline muted></video>
+                <div class="video-grid single-mode" id="videoGrid">
+                    <div class="video-tile" data-video-id="1">
+                        <span class="video-tile-label">Video 1</span>
+                        <video id="videoElement" autoplay playsinline muted></video>
+                        <img id="httpVideoElement1" class="http-video-stream" alt="Processed video 1" style="display: none;">
+                        <div class="tile-vlm-overlay" id="tileOverlay1" style="display: none;"></div>
+                    </div>
+                    <div class="video-tile" data-video-id="2">
+                        <span class="video-tile-label">Video 2</span>
+                        <img id="httpVideoElement2" class="http-video-stream" alt="Processed video 2">
+                        <div class="tile-vlm-overlay" id="tileOverlay2" style="display: none;"></div>
+                    </div>
+                    <div class="video-tile" data-video-id="3">
+                        <span class="video-tile-label">Video 3</span>
+                        <img id="httpVideoElement3" class="http-video-stream" alt="Processed video 3">
+                        <div class="tile-vlm-overlay" id="tileOverlay3" style="display: none;"></div>
+                    </div>
+                    <div class="video-tile" data-video-id="4">
+                        <span class="video-tile-label">Video 4</span>
+                        <img id="httpVideoElement4" class="http-video-stream" alt="Processed video 4">
+                        <div class="tile-vlm-overlay" id="tileOverlay4" style="display: none;"></div>
+                    </div>
+                </div>
                 <div class="video-overlay" id="videoOverlay"></div>
             </div>
 
@@ -3901,6 +4041,17 @@ limitations under the License.
         const themeText = document.getElementById('themeText');
         const jdLogo = document.getElementById('jdLogo');
         const videoElement = document.getElementById('videoElement');
+        const videoGrid = document.getElementById('videoGrid');
+        const httpVideoElements = [1, 2, 3, 4].map(id => document.getElementById(`httpVideoElement${id}`));
+        const tileOverlays = [1, 2, 3, 4].map(id => document.getElementById(`tileOverlay${id}`));
+        const videoFileInputs = [...document.querySelectorAll('.video-file-input')];
+        const videoFileMode = document.getElementById('videoFileMode');
+        const serverVideoInputs = document.getElementById('serverVideoInputs');
+        const uploadVideoInputs = document.getElementById('videoFileInputs');
+        const serverVideoSelects = [...document.querySelectorAll('.server-video-select')];
+        const refreshVideoLibraryBtn = document.getElementById('refreshVideoLibraryBtn');
+        const videoLibraryHint = document.getElementById('videoLibraryHint');
+        const loopVideoToggle = document.getElementById('loopVideoToggle');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
         const connectionStatus = document.getElementById('connectionStatus');
@@ -3941,6 +4092,7 @@ limitations under the License.
 
         let peerConnection = null;
         let localStream = null;
+        let videoStartAbortController = null;
         let websocket = null;
         let serverConfigApplied = false;
         let fadeTimeout = null;
@@ -4165,12 +4317,13 @@ limitations under the License.
             }
         });
 
-        // Handle input source tabs (Webcam vs RTSP)
+        // Handle input source tabs (Webcam, RTSP, or local MP4)
         document.querySelectorAll('.input-source-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const source = tab.getAttribute('data-source');
                 const webcamControls = document.getElementById('webcamControls');
                 const rtspControls = document.getElementById('rtspControls');
+                const fileControls = document.getElementById('fileControls');
                 const rtspBetaWarning = document.getElementById('rtspBetaWarning');
                 const startBtn = document.getElementById('startBtn');
 
@@ -4180,16 +4333,77 @@ limitations under the License.
 
                 // Show/hide controls
                 if (source === 'webcam') {
+                    videoGrid.classList.add('single-mode');
                     webcamControls.style.display = 'block';
                     rtspControls.style.display = 'none';
+                    fileControls.style.display = 'none';
                     rtspBetaWarning.style.display = 'none';
                 } else if (source === 'rtsp') {
+                    videoGrid.classList.add('single-mode');
                     webcamControls.style.display = 'none';
                     rtspControls.style.display = 'block';
+                    fileControls.style.display = 'none';
                     rtspBetaWarning.style.display = 'flex';
+                } else if (source === 'file') {
+                    videoGrid.classList.remove('single-mode');
+                    webcamControls.style.display = 'none';
+                    rtspControls.style.display = 'none';
+                    fileControls.style.display = 'block';
+                    rtspBetaWarning.style.display = 'none';
                 }
             });
         });
+
+        loopVideoToggle.addEventListener('change', () => {
+            loopVideoToggle.classList.add('applied');
+            setTimeout(() => loopVideoToggle.classList.remove('applied'), 600);
+        });
+
+        function formatFileSize(bytes) {
+            const value = Number(bytes) || 0;
+            if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+            return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        async function loadServerVideoLibrary() {
+            refreshVideoLibraryBtn.disabled = true;
+            videoLibraryHint.textContent = 'Loading server video library...';
+            const previous = serverVideoSelects.map(select => select.value);
+            try {
+                const response = await fetch('/api/video/library', { cache: 'no-store' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to load video library');
+                serverVideoSelects.forEach((select, index) => {
+                    select.innerHTML = '<option value="">Select a server MP4...</option>';
+                    data.videos.forEach(video => {
+                        const option = document.createElement('option');
+                        option.value = video.path;
+                        option.textContent = `${video.path} (${formatFileSize(video.size)})`;
+                        select.appendChild(option);
+                    });
+                    const preferred = previous[index] || data.videos[index]?.path || '';
+                    if ([...select.options].some(option => option.value === preferred)) {
+                        select.value = preferred;
+                    }
+                });
+                videoLibraryHint.textContent = data.videos.length
+                    ? `${data.videos.length} MP4 file(s) in ${data.directory}`
+                    : `No MP4 files found in ${data.directory}`;
+            } catch (error) {
+                videoLibraryHint.textContent = `Unable to load server videos: ${error.message}`;
+            } finally {
+                refreshVideoLibraryBtn.disabled = false;
+            }
+        }
+
+        videoFileMode.addEventListener('change', () => {
+            const serverMode = videoFileMode.value === 'server';
+            serverVideoInputs.style.display = serverMode ? 'block' : 'none';
+            uploadVideoInputs.style.display = serverMode ? 'none' : 'block';
+            if (serverMode) loadServerVideoLibrary();
+        });
+        refreshVideoLibraryBtn.addEventListener('click', loadServerVideoLibrary);
+        loadServerVideoLibrary();
 
         // Clear RTSP status message when user types
         const rtspUrlInput = document.getElementById('rtspUrl');
@@ -6388,7 +6602,7 @@ limitations under the License.
         }
 
         // Function to update result text (handles both markdown and plain text)
-        function updateResultText(text, metrics = null, backgroundHandoff = null) {
+        function updateResultText(text, metrics = null, backgroundHandoff = null, sourceId = null) {
             const displayText = getVlmDisplayText(text);
             if (displayText.trim() === '') {
                 resultText.style.display = vlmHistory.length > 0 && settings.overlayPosition === 'none' ? 'flex' : 'none';
@@ -6400,9 +6614,10 @@ limitations under the License.
                 : (backgroundHandoff || null);
             const prompt = currentPromptText || '';
             const hasInferenceKey = metrics?.total_inferences != null;
+            const sourcePrefix = sourceId ? `video-${sourceId}:` : '';
             const historyKey = hasInferenceKey
-                ? `count:${metrics.total_inferences}`
-                : `text:${text}`;
+                ? `${sourcePrefix}count:${metrics.total_inferences}`
+                : `${sourcePrefix}text:${text}`;
             const ttsEventKey = hasInferenceKey
                 ? historyKey
                 : `event:${++ttsEventSequence}`;
@@ -7855,6 +8070,7 @@ limitations under the License.
         // Mirror video toggle
         mirrorBtn.addEventListener('click', () => {
             videoElement.classList.toggle('mirrored');
+            httpVideoElements.forEach(element => element.classList.toggle('mirrored'));
             mirrorBtn.classList.toggle('active');
         });
 
@@ -8030,7 +8246,10 @@ limitations under the License.
                         return;
                     }
 
-                    if (data.text !== lastText) {
+                    const videoId = data.video_id ? String(data.video_id) : null;
+                    const sourcedText = videoId ? `[Video ${videoId}] ${data.text}` : data.text;
+
+                    if (sourcedText !== lastText) {
                         resultText.classList.remove('fade');
 
                         if (fadeTimeout) {
@@ -8045,15 +8264,26 @@ limitations under the License.
                         }
                     }
 
-                    updateResultText(data.text, data.metrics, data.metrics?.background_handoff || null);
-                    lastText = data.text;
+                    updateResultText(
+                        sourcedText,
+                        data.metrics,
+                        data.metrics?.background_handoff || null,
+                        videoId
+                    );
+                    lastText = sourcedText;
 
                     // Update video overlay (always, visibility is controlled by CSS)
                     const displayText = getVlmDisplayText(data.text);
-                    videoOverlay.textContent = displayText;
-                    videoOverlay.classList.remove('show', 'top', 'bottom');
-                    if (displayText && settings.overlayPosition !== 'none') {
-                        videoOverlay.classList.add('show', settings.overlayPosition);
+                    if (videoId && tileOverlays[Number(videoId) - 1]) {
+                        const tileOverlay = tileOverlays[Number(videoId) - 1];
+                        tileOverlay.textContent = displayText;
+                        tileOverlay.style.display = displayText ? 'block' : 'none';
+                    } else {
+                        videoOverlay.textContent = displayText;
+                        videoOverlay.classList.remove('show', 'top', 'bottom');
+                        if (displayText && settings.overlayPosition !== 'none') {
+                            videoOverlay.classList.add('show', settings.overlayPosition);
+                        }
                     }
 
                     if (data.metrics) {
@@ -8285,7 +8515,7 @@ limitations under the License.
             }
         }
 
-        // Start - dispatch to webcam or RTSP based on active tab
+        // Start - dispatch based on the active video source tab
         async function start() {
             streamStartToken += 1;
             const token = streamStartToken;
@@ -8299,6 +8529,15 @@ limitations under the License.
             countValue.textContent = '--';
             setVideoWaitingForStream(true);
             videoElement.srcObject = null;
+            videoElement.style.display = 'block';
+            httpVideoElements.forEach(element => {
+                element.removeAttribute('src');
+                element.style.display = 'none';
+            });
+            tileOverlays.forEach(overlay => {
+                overlay.textContent = '';
+                overlay.style.display = 'none';
+            });
             if (settings.ttsEnabled) {
                 try {
                     ensureTtsAudioContext();
@@ -8326,8 +8565,121 @@ limitations under the License.
                 await startWebcam(token);
             } else if (inputSource === 'rtsp') {
                 await startRTSP(token);
+            } else if (inputSource === 'file') {
+                revealVideoAfterMetricsToken = token;
+                await startLocalVideo(token);
             }
 
+        }
+
+        // Upload a local MP4, then use same-origin HTTP MJPEG for processed frames.
+        async function startLocalVideo(token) {
+            videoStartAbortController?.abort();
+            const startController = new AbortController();
+            videoStartAbortController = startController;
+            try {
+                const useServerLibrary = videoFileMode.value === 'server';
+                const serverPaths = serverVideoSelects.map(select => select.value);
+                const files = videoFileInputs.map(input => input.files && input.files[0]);
+                if (useServerLibrary && serverPaths.some(path => !path)) {
+                    alert('Please select all four server MP4 files');
+                    setVideoWaitingForStream(false);
+                    resetVideoButtons();
+                    return;
+                }
+                if (!useServerLibrary && files.some(file => !file)) {
+                    alert('Please select all four local .mp4 files');
+                    setVideoWaitingForStream(false);
+                    resetVideoButtons();
+                    return;
+                }
+                if (!useServerLibrary && files.some(file => !file.name.toLowerCase().endsWith('.mp4'))) {
+                    throw new Error('Only .mp4 files are supported');
+                }
+                if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                    connectWebSocket();
+                }
+                updateStatus(
+                    useServerLibrary ? 'Preparing server videos...' : 'Uploading local videos...',
+                    'processing'
+                );
+                videoFileInputs.forEach(input => { input.disabled = true; });
+                serverVideoSelects.forEach(select => { select.disabled = true; });
+                videoFileMode.disabled = true;
+                refreshVideoLibraryBtn.disabled = true;
+                loopVideoToggle.disabled = true;
+
+                const videoSources = useServerLibrary
+                    ? serverPaths.map(serverPath => ({ server_path: serverPath }))
+                    : await Promise.all(files.map(async (file) => {
+                    const formData = new FormData();
+                    formData.append('video', file, file.name);
+                    const response = await fetch(
+                        `/api/video/upload?session_id=${encodeURIComponent(sessionId)}`,
+                        { method: 'POST', body: formData, signal: startController.signal }
+                    );
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || `Failed to upload ${file.name}`);
+                    return { file_id: result.file_id };
+                }));
+
+                if (startController.signal.aborted || token !== streamStartToken) {
+                    throw new DOMException('Video start was cancelled', 'AbortError');
+                }
+
+                updateStatus('Starting four server videos...', 'processing');
+
+                videoElement.style.display = 'none';
+                const endedVideoIds = new Set();
+                httpVideoElements.forEach((element, index) => {
+                    const videoId = String(index + 1);
+                    const streamUrl = new URL('/api/video/stream', window.location.origin);
+                    streamUrl.searchParams.set('session_id', sessionId);
+                    const source = videoSources[index];
+                    if (source.file_id) streamUrl.searchParams.set('file_id', source.file_id);
+                    if (source.server_path) streamUrl.searchParams.set('server_path', source.server_path);
+                    streamUrl.searchParams.set('video_id', videoId);
+                    streamUrl.searchParams.set('loop', String(loopVideoToggle.checked));
+                    element.style.display = 'block';
+                    element.onload = () => {
+                        if (token !== streamStartToken) return;
+                        isAnalysisRunning = true;
+                        updatePromptAvailability();
+                        revealVideoWhenReady(token);
+                    };
+                    element.onerror = () => {
+                        if (token !== streamStartToken) return;
+                        endedVideoIds.add(videoId);
+                        const tileOverlay = tileOverlays[index];
+                        tileOverlay.textContent = 'Video stream ended';
+                        tileOverlay.style.display = 'block';
+                        if (endedVideoIds.size === httpVideoElements.length) {
+                            updateStatus('All video streams ended', 'disconnected');
+                            stop();
+                        }
+                    };
+                    element.src = streamUrl.toString();
+                });
+
+                // Some embedded Chromium builds do not dispatch load for endless MJPEG.
+                setTimeout(() => {
+                    if (token === streamStartToken && !isAnalysisRunning) {
+                        isAnalysisRunning = true;
+                        updatePromptAvailability();
+                        revealVideoWhenReady(token);
+                    }
+                }, 1000);
+
+            } catch (error) {
+                if (error.name === 'AbortError' || token !== streamStartToken) {
+                    return;
+                }
+                console.error('Error starting local video:', error);
+                updateStatus(`Error: ${error.message}`, 'disconnected');
+                alert('Failed to start local video: ' + error.message);
+                setVideoWaitingForStream(false);
+                await stop();
+            }
         }
 
         // Start WebRTC (Webcam mode)
@@ -8439,7 +8791,10 @@ limitations under the License.
                 peerConnection.ontrack = (event) => {
                     console.log('Received RTSP stream from server');
                     if (event.track.kind === 'video') {
-                        showProcessedVideoStream(event.streams[0], token);
+                        const remoteStream = event.streams && event.streams[0]
+                            ? event.streams[0]
+                            : new MediaStream([event.track]);
+                        showProcessedVideoStream(remoteStream, token);
                     }
                 };
 
@@ -8457,6 +8812,22 @@ limitations under the License.
                             updateStatus('Disconnected', 'disconnected');
                             stop();
                             break;
+                    }
+                };
+
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('Peer connection state:', peerConnection.connectionState);
+                };
+
+                peerConnection.onicegatheringstatechange = () => {
+                    console.log('ICE gathering state:', peerConnection.iceGatheringState);
+                };
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Local ICE candidate:', event.candidate.candidate);
+                    } else {
+                        console.log('Local ICE candidate gathering complete');
                     }
                 };
 
@@ -8530,6 +8901,10 @@ limitations under the License.
         // Stop (handles both webcam and RTSP)
         async function stop({ clearConversation = false } = {}) {
             streamStartToken += 1;
+            if (videoStartAbortController) {
+                videoStartAbortController.abort();
+                videoStartAbortController = null;
+            }
             isAnalysisRunning = false;
             revealVideoAfterMetricsToken = null;
             cancelRevealVideoFallback();
@@ -8562,6 +8937,13 @@ limitations under the License.
             }
 
             videoElement.srcObject = null;
+            httpVideoElements.forEach(element => {
+                element.onload = null;
+                element.onerror = null;
+                element.removeAttribute('src');
+                element.style.display = 'none';
+            });
+            videoElement.style.display = 'block';
             setVideoWaitingForStream(false);
 
             // Reset session after local tracks are stopped so the backend can cancel
@@ -8579,6 +8961,11 @@ limitations under the License.
             if (testRtspBtn) {
                 testRtspBtn.disabled = false;
             }
+            videoFileInputs.forEach(input => { input.disabled = false; });
+            serverVideoSelects.forEach(select => { select.disabled = false; });
+            videoFileMode.disabled = false;
+            refreshVideoLibraryBtn.disabled = false;
+            loopVideoToggle.disabled = false;
         }
 
         // Sidebar start/stop buttons removed - using overlay buttons instead
