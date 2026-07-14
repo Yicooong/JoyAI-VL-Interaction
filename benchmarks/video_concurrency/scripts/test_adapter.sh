@@ -1,0 +1,12 @@
+python benchmarks/video_concurrency/benchmark.py \
+  --target adapter \
+  --api-base http://127.0.0.1:8070/v1 \
+  --model JoyAI-VL-Interaction-Preview \
+  --video xxx/JoyAI-VL-Interaction/videos/crime \
+  --concurrency 1,2,4,8,16 \
+  --fps 1 \
+  --duration 60 \
+  --prompt "请观察当前画面并决定是否需要回应。" \
+  --max-tokens 12800 \
+  --temperature 0 \
+  --output benchmarks/video_concurrency/results/local-adapter
