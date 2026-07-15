@@ -7,7 +7,8 @@ from pathlib import Path
 
 from benchmark import (
     DropRecord, RequestRecord, build_request_kwargs, discover_media, json_safe,
-    percentile, select_sources, summarize, write_outputs,
+    percentile, response_category, select_sources, summarize, use_streaming,
+    write_outputs,
 )
 
 
@@ -98,6 +99,17 @@ class BenchmarkSummaryTests(unittest.TestCase):
         )
         self.assertEqual(kwargs["extra_headers"], {"x-streaming-session": "stream-0"})
         self.assertEqual(kwargs["extra_body"], {"frame_time_range": "1.5 seconds"})
+
+    def test_streaming_auto_only_enables_vllm(self):
+        self.assertTrue(use_streaming(Namespace(target="vllm", streaming="auto")))
+        self.assertFalse(use_streaming(Namespace(target="adapter", streaming="auto")))
+        self.assertFalse(use_streaming(Namespace(target="vllm", streaming="off")))
+
+    def test_response_category(self):
+        self.assertEqual(response_category("</silence>"), "silence")
+        self.assertEqual(response_category("silence"), "silence")
+        self.assertEqual(response_category("现场出现了一辆车"), "response")
+        self.assertEqual(response_category(""), "empty")
 
 
 if __name__ == "__main__":

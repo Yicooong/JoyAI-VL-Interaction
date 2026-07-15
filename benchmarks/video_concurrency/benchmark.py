@@ -45,6 +45,15 @@ class RequestRecord:
     completion_tokens: int | None
     image_bytes: int
     error: str | None
+    ttft_ms: float | None = None
+    tpot_ms: float | None = None
+    output_tokens_per_second: float | None = None
+    finish_reason: str | None = None
+    response_category: str = "unknown"
+    response_chars: int = 0
+    frames_arrived_during_request: int = 0
+    adapter_total_ms: float | None = None
+    adapter_vllm_inference_ms: float | None = None
 
 
 @dataclass
@@ -78,6 +87,52 @@ def summarize(
 ) -> dict[str, Any]:
     successful = [r for r in records if r.ok]
     latencies = [r.latency_ms for r in successful]
+    ttfts = [r.ttft_ms for r in successful if r.ttft_ms is not None]
+    tpots = [r.tpot_ms for r in successful if r.tpot_ms is not None]
+    output_rates = [
+        r.output_tokens_per_second
+        for r in successful
+        if r.output_tokens_per_second is not None
+    ]
+    completion_counts = [
+        r.completion_tokens for r in successful if r.completion_tokens is not None
+    ]
+    category_counts = {
+        category: sum(r.response_category == category for r in successful)
+        for category in ("silence", "response", "empty")
+    }
+    category_metrics = {}
+    for category in ("silence", "response", "empty"):
+        category_records = [
+            record for record in successful if record.response_category == category
+        ]
+        category_metrics[category] = {
+            "count": len(category_records),
+            "latency_ms": metric_summary(
+                [record.latency_ms for record in category_records]
+            ),
+            "ttft_ms": metric_summary(
+                [
+                    record.ttft_ms
+                    for record in category_records
+                    if record.ttft_ms is not None
+                ]
+            ),
+            "tpot_ms": metric_summary(
+                [
+                    record.tpot_ms
+                    for record in category_records
+                    if record.tpot_ms is not None
+                ]
+            ),
+            "completion_tokens": metric_summary(
+                [
+                    record.completion_tokens
+                    for record in category_records
+                    if record.completion_tokens is not None
+                ]
+            ),
+        }
     scheduled = len(records) + len(drops)
     stream_stats: dict[str, dict[str, Any]] = {}
     stream_ids = sorted({r.stream_id for r in records} | {d.stream_id for d in drops})
@@ -118,7 +173,40 @@ def summarize(
             "p99": percentile(latencies, 0.99),
             "max": max(latencies) if latencies else None,
         },
+        "ttft_ms": metric_summary(ttfts),
+        "tpot_ms": metric_summary(tpots),
+        "output_tokens_per_second": metric_summary(output_rates),
+        "completion_tokens": metric_summary(completion_counts),
+        "response_categories": {
+            **category_counts,
+            "silence_rate": (
+                category_counts["silence"] / len(successful) if successful else 0.0
+            ),
+            "response_rate": (
+                category_counts["response"] / len(successful) if successful else 0.0
+            ),
+        },
+        "response_category_metrics": category_metrics,
+        "requests_with_streaming_metrics": len(ttfts),
+        "mean_frames_arrived_during_request": (
+            statistics.fmean(r.frames_arrived_during_request for r in successful)
+            if successful
+            else 0.0
+        ),
         "streams": stream_stats,
+    }
+
+
+def metric_summary(values: list[float | int]) -> dict[str, float | int | None]:
+    numeric = [float(value) for value in values]
+    return {
+        "count": len(numeric),
+        "mean": statistics.fmean(numeric) if numeric else None,
+        "p50": percentile(numeric, 0.50),
+        "p95": percentile(numeric, 0.95),
+        "p99": percentile(numeric, 0.99),
+        "min": min(numeric) if numeric else None,
+        "max": max(numeric) if numeric else None,
     }
 
 
@@ -173,6 +261,34 @@ def image_data_url(data: bytes, source: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
 
 
+def use_streaming(args: argparse.Namespace) -> bool:
+    if args.streaming == "on":
+        return True
+    if args.streaming == "off":
+        return False
+    return args.target == "vllm"
+
+
+def response_category(text: str) -> str:
+    normalized = (text or "").strip().lower()
+    if not normalized:
+        return "empty"
+    if "</silence>" in normalized or normalized == "silence":
+        return "silence"
+    return "response"
+
+
+def _text_value(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "".join(
+            str(item.get("text", "")) if isinstance(item, dict) else str(item)
+            for item in value
+        )
+    return "" if value is None else str(value)
+
+
 def build_request_kwargs(
     args: argparse.Namespace,
     *,
@@ -221,17 +337,73 @@ async def send_request(
     completion_tokens = None
     error = None
     ok = False
+    ttft_ms = None
+    tpot_ms = None
+    output_rate = None
+    finish_reason = None
+    response_text = ""
+    adapter_total_ms = None
+    adapter_vllm_inference_ms = None
     try:
-        response = await client.chat.completions.create(**build_request_kwargs(
+        request_kwargs = build_request_kwargs(
             args,
             stream_id=stream_id,
             frame_index=frame_index,
             frame=frame,
             source=source,
-        ))
-        usage = getattr(response, "usage", None)
-        prompt_tokens = getattr(usage, "prompt_tokens", None)
-        completion_tokens = getattr(usage, "completion_tokens", None)
+        )
+        if use_streaming(args):
+            request_kwargs["stream"] = True
+            request_kwargs["stream_options"] = {"include_usage": True}
+            stream = await client.chat.completions.create(**request_kwargs)
+            first_token_at = None
+            async for chunk in stream:
+                usage = getattr(chunk, "usage", None)
+                if usage is not None:
+                    prompt_tokens = getattr(usage, "prompt_tokens", prompt_tokens)
+                    completion_tokens = getattr(
+                        usage, "completion_tokens", completion_tokens
+                    )
+                choices = getattr(chunk, "choices", None) or []
+                for choice in choices:
+                    reason = getattr(choice, "finish_reason", None)
+                    if reason:
+                        finish_reason = str(reason)
+                    delta = getattr(choice, "delta", None)
+                    content_piece = _text_value(getattr(delta, "content", None))
+                    timing_piece = content_piece or _text_value(
+                        getattr(delta, "reasoning_content", None)
+                    )
+                    if timing_piece:
+                        if first_token_at is None:
+                            first_token_at = time.perf_counter()
+                            ttft_ms = (first_token_at - started_at) * 1000
+                    if content_piece:
+                        response_text += content_piece
+            stream_completed_at = time.perf_counter()
+            if first_token_at is not None and completion_tokens:
+                decode_seconds = max(0.0, stream_completed_at - first_token_at)
+                if completion_tokens > 1:
+                    tpot_ms = decode_seconds * 1000 / (completion_tokens - 1)
+                    if decode_seconds > 0:
+                        output_rate = (completion_tokens - 1) / decode_seconds
+        else:
+            response = await client.chat.completions.create(**request_kwargs)
+            usage = getattr(response, "usage", None)
+            prompt_tokens = getattr(usage, "prompt_tokens", None)
+            completion_tokens = getattr(usage, "completion_tokens", None)
+            choices = getattr(response, "choices", None) or []
+            if choices:
+                finish_reason = getattr(choices[0], "finish_reason", None)
+                message = getattr(choices[0], "message", None)
+                response_text = _text_value(getattr(message, "content", None))
+            try:
+                payload = response.model_dump()
+                timing = payload.get("streamingharness", {}).get("timing", {})
+                adapter_total_ms = timing.get("adapter_total_ms")
+                adapter_vllm_inference_ms = timing.get("vllm_inference_ms")
+            except (AttributeError, TypeError):
+                pass
         ok = True
         status_code = 200
     except Exception as exc:  # The record is more useful than aborting the run.
@@ -239,6 +411,9 @@ async def send_request(
         error = f"{type(exc).__name__}: {exc}"
     completed_at = time.perf_counter()
     latency_ms = (completed_at - started_at) * 1000
+    frames_arrived = max(
+        0, math.floor((completed_at - scheduled_at) * args.fps + 1e-9)
+    )
     return RequestRecord(
         concurrency=concurrency,
         stream_id=stream_id,
@@ -255,6 +430,15 @@ async def send_request(
         completion_tokens=completion_tokens,
         image_bytes=len(frame),
         error=error,
+        ttft_ms=ttft_ms,
+        tpot_ms=tpot_ms,
+        output_tokens_per_second=output_rate,
+        finish_reason=str(finish_reason) if finish_reason is not None else None,
+        response_category=response_category(response_text),
+        response_chars=len(response_text),
+        frames_arrived_during_request=frames_arrived,
+        adapter_total_ms=adapter_total_ms,
+        adapter_vllm_inference_ms=adapter_vllm_inference_ms,
     )
 
 
@@ -348,15 +532,32 @@ def write_outputs(
             "concurrency", "scheduled_frames", "successful_requests", "errors",
             "dropped_frames", "drop_rate", "completed_rps", "effective_fps_per_stream",
             "deadline_miss_rate", "p50_latency_ms", "p95_latency_ms", "p99_latency_ms",
+            "p50_ttft_ms", "p95_ttft_ms", "p50_tpot_ms", "p95_tpot_ms",
+            "mean_output_tokens_per_second", "mean_completion_tokens",
+            "silence_rate", "response_rate", "mean_frames_arrived_during_request",
         ]
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         for item in summaries:
+            ttft = item.get("ttft_ms", {})
+            tpot = item.get("tpot_ms", {})
+            output_rate = item.get("output_tokens_per_second", {})
+            completion = item.get("completion_tokens", {})
+            categories = item.get("response_categories", {})
             writer.writerow({
                 **{field: item.get(field) for field in fields},
                 "p50_latency_ms": item["latency_ms"]["p50"],
                 "p95_latency_ms": item["latency_ms"]["p95"],
                 "p99_latency_ms": item["latency_ms"]["p99"],
+                "p50_ttft_ms": ttft.get("p50"),
+                "p95_ttft_ms": ttft.get("p95"),
+                "p50_tpot_ms": tpot.get("p50"),
+                "p95_tpot_ms": tpot.get("p95"),
+                "mean_output_tokens_per_second": output_rate.get("mean"),
+                "mean_completion_tokens": completion.get("mean"),
+                "silence_rate": categories.get("silence_rate"),
+                "response_rate": categories.get("response_rate"),
+                "mean_frames_arrived_during_request": item.get("mean_frames_arrived_during_request"),
             })
 
 
@@ -377,6 +578,10 @@ def parse_args() -> argparse.Namespace:
         "--target", choices=("vllm", "adapter"), default="vllm",
         help="Test the raw vLLM API or the stateful webinfer adapter",
     )
+    parser.add_argument(
+        "--streaming", choices=("auto", "on", "off"), default="auto",
+        help="Use SSE for token timing; auto enables it for vLLM only",
+    )
     parser.add_argument("--api-base", required=True, help="Example: http://host:7060/v1")
     parser.add_argument("--api-key", default="EMPTY")
     parser.add_argument("--model", required=True)
@@ -384,8 +589,8 @@ def parse_args() -> argparse.Namespace:
                         help="Video/image file or directory; repeat for multiple inputs")
     parser.add_argument("--concurrency", default="1,2,4,8")
     parser.add_argument("--fps", type=float, default=1.0)
-    parser.add_argument("--duration", type=float, default=600.0)
-    parser.add_argument("--prompt", default="请观察当前画面并决定是否需要回应。")
+    parser.add_argument("--duration", type=float, default=60.0)
+    parser.add_argument("--prompt", default="请实时解说画面")
     parser.add_argument("--max-tokens", type=int, default=128)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=None,
@@ -407,6 +612,8 @@ def parse_args() -> argparse.Namespace:
         parser.error(f"input paths not found: {', '.join(missing)}")
     if not discover_media(args.video):
         parser.error("--video inputs contain no supported media files")
+    if args.target == "adapter" and args.streaming == "on":
+        parser.error("adapter does not expose SSE; use --streaming auto or off")
     return args
 
 

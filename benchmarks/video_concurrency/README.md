@@ -108,6 +108,7 @@ python benchmarks/video_concurrency/benchmark.py \
 | 参数 | 是否必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `--target` | 否 | `vllm` | 测试目标。`vllm` 只发送标准 OpenAI 图文请求，测试原始模型服务；`adapter` 额外发送每路独立 session 和连续帧时间戳，测试 webinfer 的有状态完整链路。 |
+| `--streaming` | 否 | `auto` | Token timing 模式。`auto` 对原生 vLLM 启用 SSE、对 adapter 保持非流式；`on` 强制使用 SSE；`off` 只测完整响应延迟。当前 adapter 不提供 SSE，因此 `--target adapter --streaming on` 会被拒绝。 |
 | `--api-base` | 是 | 无 | OpenAI-compatible API 的基础地址，必须包含 `/v1`。`--target vllm` 应填写原生 vLLM 地址（常见端口 7060）；`--target adapter` 应填写 webinfer adapter 地址（默认端口 8070）。 |
 | `--api-key` | 否 | `EMPTY` | API 密钥。本地 vLLM 通常不校验密钥，可以保留默认值；远程服务启用鉴权时传入真实密钥。该值不会写入结果文件。 |
 | `--model` | 是 | 无 | 请求体中的模型名称，必须与服务启动时的 `--served-model-name` 一致，例如 `JoyAI-VL-Interaction-Preview`。 |
@@ -189,11 +190,20 @@ python benchmarks/video_concurrency/benchmark.py --help
 | `completed_s` | 客户端收到完整 API 响应的相对时间，单位为秒。 |
 | `schedule_lag_ms` | 实际开始时间相对计划时间的滞后，即 `(started_s - scheduled_s) × 1000`。该值较大通常表示压测客户端自身调度不及时。 |
 | `latency_ms` | 客户端端到端 API 延迟，即 `(completed_s - started_s) × 1000`，包含图片 Base64、网络传输、服务端排队和模型推理。 |
+| `ttft_ms` | Time To First Token，从请求开始到收到第一个非空 SSE token/chunk。仅流式 vLLM 请求可用；adapter 当前为 `null`。 |
+| `tpot_ms` | Time Per Output Token，使用 `(流结束时间 - 首 token 时间) / (completion_tokens - 1)` 估算。仅 completion tokens 大于 1 的流式请求可用。 |
+| `output_tokens_per_second` | 首 token 之后的平均输出 token 吞吐。只用于流式请求。 |
 | `deadline_missed` | 成功请求的延迟是否超过 `--deadline-ms`。超过 deadline 不等同于请求失败。 |
 | `ok` | OpenAI-compatible API 调用是否成功完成。 |
 | `status_code` | HTTP 状态码；成功时通常为 `200`，某些连接类异常可能没有状态码。 |
 | `prompt_tokens` | 服务端 usage 数据中返回的输入 token 数。具体是否包含视觉 token 取决于服务端实现。 |
-| `completion_tokens` | 服务端 usage 数据中返回的输出 token 数。如果它经常等于 `--max-tokens`，输出可能触及生成上限。当前日志没有保存 `finish_reason`，不能仅凭该值确定是否被截断。 |
+| `completion_tokens` | 服务端 usage 数据中返回的输出 token 数。如果它经常等于 `--max-tokens`，应结合 `finish_reason` 判断是否被截断。 |
+| `finish_reason` | 服务端返回的结束原因，例如 `stop` 或 `length`。`length` 表示触及输出 token 上限。 |
+| `response_category` | 根据完整输出分类为 `silence`、`response` 或 `empty`，用于分别统计监控静默和直播解说负载。响应原文不会写入日志。 |
+| `response_chars` | 完整响应的字符数，不保存文本内容。 |
+| `frames_arrived_during_request` | 当前请求执行期间，按照目标 FPS 已经到达的后续帧数量。用于判断生成过程中画面向前推进了多少帧。 |
+| `adapter_total_ms` | Adapter 响应中已有的 `streamingharness.timing.adapter_total_ms`；直接 vLLM 请求为 `null`。 |
+| `adapter_vllm_inference_ms` | Adapter 报告的完整 main-model 调用耗时，不是 TTFT；直接 vLLM 请求为 `null`。 |
 | `image_bytes` | Base64 编码前的 JPEG/图片原始字节数，不包含 Base64 约 4/3 的体积膨胀和 JSON 请求体开销。 |
 | `error` | 请求失败时记录异常类型和信息；请求成功时为 `null`。 |
 
@@ -219,6 +229,33 @@ latency_ms = (59.1850573 - 58.5009066) × 1000 ≈ 684.151 ms
 仍未完成。由于该帧没有发起 API 请求，因此没有 latency、HTTP 状态码或 token 数据。
 每轮 stream 与输入视频的对应关系保存在 `summary.json` 的 `selected_videos` 中；目前
 逐请求记录不重复保存视频路径，也不保存模型响应文本，以控制日志体积。
+
+### TTFT、TPOT 与场景分层
+
+原生 vLLM 在默认 `--streaming auto` 下使用 SSE，汇总文件会增加：
+
+- `ttft_ms` 的 mean/P50/P95/P99/min/max；
+- `tpot_ms` 的 mean/P50/P95/P99/min/max；
+- `output_tokens_per_second` 和 `completion_tokens` 分布；
+- `response_categories` 中的 silence/response 数量及占比；
+- `response_category_metrics` 中 silence/response 各自的 latency、TTFT、TPOT 和
+  completion token 分布，避免大量 silence 掩盖解说请求；
+- `mean_frames_arrived_during_request`。
+
+当前 webinfer adapter 外部接口返回普通 JSON，不提供 SSE。Benchmark 不会用完整响应时间
+伪造 TTFT/TPOT；adapter 的这两组统计会显示 `count=0`、其余值为 `null`。它仍然会统计
+silence 占比、非 silence 占比、输出 token、完整端到端延迟，以及 adapter 响应中已有的
+总推理 timing。要获得 adapter 后端 main model 的真实 TTFT/TPOT，需要服务端提供相应
+流式时间点，本次改动没有修改 adapter。
+
+视频监控报告应重点查看 silence rate、决策延迟、丢帧和有效 FPS；实时直播解说应重点
+查看非 silence 请求的 TTFT、TPOT、完整响应延迟和 `frames_arrived_during_request`。
+为了让直播测试产生足够多的非 silence 回复，应使用直播类视频和明确的解说 prompt，
+例如：
+
+```bash
+--prompt "你是实时直播解说员，请持续根据当前画面给出简短、及时的解说。"
+```
 
 运行单元测试：
 
