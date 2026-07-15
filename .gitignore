@@ -92,3 +92,6 @@ coverage.xml
 
 videos/
 tools/
+benchmarks/video_concurrency/results
+benchmarks/video_concurrency/scripts
+
