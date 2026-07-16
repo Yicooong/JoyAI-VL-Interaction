@@ -74,6 +74,7 @@ websockets = set()  # Track active WebSocket connections (all)
 rtsp_tracks = {}  # Track active RTSP streams {session_id: (rtsp_track, processor_track)}
 uploaded_videos = {}  # file_id -> {path, session_id}
 http_video_tracks = defaultdict(set)  # session_id -> source tracks used by MJPEG responses
+http_video_tasks = defaultdict(set)  # parent session_id -> active MJPEG request tasks
 video_upload_dir = Path(tempfile.gettempdir()) / "joy-interaction-webui-uploads"
 video_library_dir = Path(
     os.environ.get("LIVE_VLM_VIDEO_DIR", str(Path.cwd() / "videos"))
@@ -218,6 +219,17 @@ async def cleanup_session(session_id: str, reset_adapter: bool = True) -> dict:
 
     logger.info("[%s] Cleaning up session", session_id)
 
+    current_task = asyncio.current_task()
+    stream_tasks = [
+        task
+        for task in http_video_tasks.pop(session_id, set())
+        if task is not current_task and not task.done()
+    ]
+    for task in stream_tasks:
+        task.cancel()
+    if stream_tasks:
+        await asyncio.gather(*stream_tasks, return_exceptions=True)
+
     session_sockets = list(session_websockets.pop(session_id, set()))
     for ws in session_sockets:
         try:
@@ -275,11 +287,12 @@ async def cleanup_session(session_id: str, reset_adapter: bool = True) -> dict:
         await bg_svc.close(cancel_requests=False)
 
     logger.info(
-        "[%s] Session cleanup complete: removed=%s, websockets=%s, peer_connections=%s, cancelled_vlm_tasks=%s, cancelled_background_tasks=%s",
+        "[%s] Session cleanup complete: removed=%s, websockets=%s, peer_connections=%s, video_streams=%s, cancelled_vlm_tasks=%s, cancelled_background_tasks=%s",
         session_id,
         bool(session),
         len(session_sockets),
         len(pcs_for_session),
+        len(stream_tasks),
         cancelled,
         cancelled_background,
     )
@@ -288,6 +301,7 @@ async def cleanup_session(session_id: str, reset_adapter: bool = True) -> dict:
         "removed": bool(session),
         "websockets_closed": len(session_sockets),
         "peer_connections_closed": len(pcs_for_session),
+        "video_streams_closed": len(stream_tasks),
         "cancelled_vlm_tasks": cancelled,
         "cancelled_background_tasks": cancelled_background,
     }
@@ -1135,21 +1149,13 @@ async def stream_uploaded_video(request):
             ),
         )
     try:
-        player = MediaPlayer(str(source_path), loop=loop_video)
-        if player.video is None:
+        pending_player = MediaPlayer(str(source_path), loop=False)
+        if pending_player.video is None:
             raise ValueError("The uploaded MP4 does not contain a video track")
     except Exception as e:
         logger.exception("[%s] Failed to open uploaded MP4", session_id)
         return web.json_response({"error": f"Failed to open uploaded MP4: {e}"}, status=400)
 
-    source_track = player.video
-    processor_track = VideoProcessorTrack(
-        source_track,
-        session["vlm_service"],
-        text_callback=video_callback,
-        background_service=session.get("background_service"),
-    )
-    http_video_tracks[session_id].add(source_track)
     response = web.StreamResponse(
         status=200,
         headers={
@@ -1159,31 +1165,71 @@ async def stream_uploaded_video(request):
         },
     )
     await response.prepare(request)
+    request_task = asyncio.current_task()
+    if request_task is not None:
+        http_video_tasks[session_id].add(request_task)
     logger.info("[%s] Started HTTP MJPEG stream video=%s (loop=%s)", session_id, video_id, loop_video)
 
     try:
         while True:
-            frame = await processor_track.recv()
-            image_buffer = io.BytesIO()
-            frame.to_image().save(image_buffer, format="JPEG", quality=85)
-            jpeg = image_buffer.getvalue()
-            await response.write(
-                b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
-                + str(len(jpeg)).encode("ascii")
-                + b"\r\n\r\n"
-                + jpeg
-                + b"\r\n"
-            )
-    except (MediaStreamError, StopAsyncIteration, ConnectionResetError, asyncio.CancelledError):
+            source_track = None
+            processor_track = None
+            frames_in_pass = 0
+            try:
+                # Reopening the player for every pass also resets its playback clock.
+                # MediaPlayer(loop=True) reuses that clock after seeking to zero and can
+                # race through subsequent passes until the preview appears frozen.
+                player = pending_player or MediaPlayer(str(source_path), loop=False)
+                pending_player = None
+                source_track = player.video
+                if source_track is None:
+                    raise ValueError("The uploaded MP4 does not contain a video track")
+                processor_track = VideoProcessorTrack(
+                    source_track,
+                    session["vlm_service"],
+                    text_callback=video_callback,
+                    background_service=session.get("background_service"),
+                )
+                http_video_tracks[session_id].add(source_track)
+
+                while True:
+                    frame = await processor_track.recv()
+                    frames_in_pass += 1
+                    image_buffer = io.BytesIO()
+                    frame.to_image().save(image_buffer, format="JPEG", quality=85)
+                    jpeg = image_buffer.getvalue()
+                    await response.write(
+                        b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                        + str(len(jpeg)).encode("ascii")
+                        + b"\r\n\r\n"
+                        + jpeg
+                        + b"\r\n"
+                    )
+            except (MediaStreamError, StopAsyncIteration):
+                if not loop_video or frames_in_pass == 0:
+                    break
+                logger.debug("[%s] Reopening video=%s for loop playback", session_id, video_id)
+            finally:
+                if processor_track is not None:
+                    processor_track.stop()
+                if source_track is not None:
+                    source_track.stop()
+                    tracks = http_video_tracks.get(session_id)
+                    if tracks is not None:
+                        tracks.discard(source_track)
+                        if not tracks:
+                            http_video_tracks.pop(session_id, None)
+    except (ValueError, OSError) as e:
+        logger.warning("[%s] Uploaded MP4 stream failed: %s", session_id, e)
+    except (ConnectionResetError, asyncio.CancelledError):
         logger.info("[%s] HTTP video stream ended", session_id)
     finally:
-        processor_track.stop()
-        source_track.stop()
-        tracks = http_video_tracks.get(session_id)
-        if tracks is not None:
-            tracks.discard(source_track)
-            if not tracks:
-                http_video_tracks.pop(session_id, None)
+        if request_task is not None:
+            tasks = http_video_tasks.get(session_id)
+            if tasks is not None:
+                tasks.discard(request_task)
+                if not tasks:
+                    http_video_tasks.pop(session_id, None)
 
     return response
 
@@ -1200,7 +1246,15 @@ async def rtsp_start(request):
     try:
         data = await request.json()
         rtsp_url = data.get("rtsp_url")
-        session_id = data.get("session_id", "default")
+        parent_session_id = str(data.get("parent_session_id") or "").strip()
+        video_id = str(data.get("video_id") or "").strip()
+        if parent_session_id:
+            if not video_id.isdecimal() or len(video_id) > 9 or int(video_id) < 1:
+                return web.json_response({"error": "Invalid video_id"}, status=400)
+            video_id = str(int(video_id))
+            session_id = f"{parent_session_id}:video-{video_id}"
+        else:
+            session_id = data.get("session_id", "default")
         stream_to_browser = bool(data.get("stream_to_browser", False))
 
         if not rtsp_url:
@@ -1231,9 +1285,33 @@ async def rtsp_start(request):
 
         # Create processor track with this session's VLM and session-scoped callback
         session = get_or_create_session(session_id)
+        if parent_session_id:
+            parent_session = get_or_create_session(parent_session_id)
+            session_children[parent_session_id].add(session_id)
+            parent_vlm = parent_session["vlm_service"]
+            child_vlm = session["vlm_service"]
+            child_vlm.model = parent_vlm.model
+            child_vlm.update_api_settings(parent_vlm.api_base, parent_vlm.api_key)
+            child_vlm.update_prompt(parent_vlm.prompt or "")
         session_vlm = session["vlm_service"]
         background_service = session.get("background_service")
-        session_callback = get_session_callback(session_id)
+        if parent_session_id:
+
+            def session_callback(text: str, metrics: dict):
+                send_to_session(
+                    parent_session_id,
+                    json.dumps(
+                        {
+                            "type": "vlm_response",
+                            "video_id": video_id,
+                            "text": text,
+                            "metrics": metrics,
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+        else:
+            session_callback = get_session_callback(session_id)
         processor_track = VideoProcessorTrack(
             rtsp_track,
             session_vlm,

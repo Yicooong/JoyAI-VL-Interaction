@@ -8,7 +8,6 @@
 
 ```text
 images/
-├── simple-logo.svg
 ├── *.png
 └── README.md
 ```

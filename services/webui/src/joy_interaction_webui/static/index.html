@@ -19,58 +19,51 @@ limitations under the License.
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JoyAI VL Live</title>
-
-    <!-- Favicons -->
-    <link rel="icon" type="image/svg+xml" href="favicon/favicon.svg?v=joyai-red-2">
-    <link rel="icon" type="image/x-icon" href="favicon/favicon.ico?v=joyai-red-2">
-    <link rel="icon" type="image/png" sizes="96x96" href="favicon/favicon-96x96.png?v=joyai-red-2">
-    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png?v=joyai-red-2">
-    <link rel="manifest" href="favicon/site.webmanifest?v=joyai-red-2">
+    <title>VL Live</title>
 
     <style>
         :root {
-            --joy-red: #c81e2a;
-            --joy-red-dark: #8f111a;
-            --joy-red-light: #f0525b;
-            --joy-red-soft: rgba(200, 30, 42, 0.12);
-            --joy-red-ring: rgba(200, 30, 42, 0.22);
-            --joy-red-shadow: rgba(143, 17, 26, 0.34);
+            --brand-blue: #1067D1;
+            --brand-blue-dark: #0B4FA8;
+            --brand-blue-light: #4A90E2;
+            --brand-blue-soft: rgba(16, 103, 209, 0.12);
+            --brand-blue-ring: rgba(16, 103, 209, 0.22);
+            --brand-blue-shadow: rgba(11, 79, 168, 0.34);
 
             /* Legacy variables kept for existing references */
-            --nvidia-green: var(--joy-red);
-            --nvidia-green-dark: var(--joy-red-dark);
-            --nvidia-green-light: var(--joy-red-light);
+            --nvidia-green: var(--brand-blue);
+            --nvidia-green-dark: var(--brand-blue-dark);
+            --nvidia-green-light: var(--brand-blue-light);
 
             /* Dark theme (default - NVIDIA style) */
-            --bg-primary: #080707;
-            --bg-secondary: #121010;
-            --bg-tertiary: #1b1515;
+            --bg-primary: #070A0F;
+            --bg-secondary: #10151D;
+            --bg-tertiary: #151D29;
             --text-primary: #FFFFFF;
             --text-secondary: #CCCCCC;
             --text-muted: #999999;
-            --border-color: #332526;
-            --card-bg: #141111;
-            --card-hover: #211819;
-            --accent-color: var(--joy-red);
-            --accent-hover: var(--joy-red-dark);
+            --border-color: #253247;
+            --card-bg: #111721;
+            --card-hover: #182338;
+            --accent-color: var(--brand-blue);
+            --accent-hover: var(--brand-blue-dark);
             --warning-color: #FFA726; /* Orange - better contrast on dark background */
             --error-color: #EF5350;
         }
 
         body.light-theme {
             /* Light theme (NVIDIA NGC style) */
-            --bg-primary: #fffafa;
-            --bg-secondary: #fff5f5;
-            --bg-tertiary: #f7ecec;
+            --bg-primary: #FAFCFF;
+            --bg-secondary: #F3F7FC;
+            --bg-tertiary: #EAF1FA;
             --text-primary: #000000;
             --text-secondary: #333333;
             --text-muted: #666666;
-            --border-color: #ead7d8;
+            --border-color: #D5E1F0;
             --card-bg: #ffffff;
-            --card-hover: #fff1f2;
-            --accent-color: var(--joy-red);
-            --accent-hover: var(--joy-red-dark);
+            --card-hover: #EDF4FC;
+            --accent-color: var(--brand-blue);
+            --accent-hover: var(--brand-blue-dark);
             --warning-color: #F57C00; /* Darker orange - better contrast on light background */
             --error-color: #D32F2F;
         }
@@ -105,7 +98,7 @@ limitations under the License.
         .header {
             background:
                 linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 34%),
-                linear-gradient(135deg, #d92a35 0%, var(--joy-red) 48%, #7c1018 100%);
+                linear-gradient(135deg, #4A90E2 0%, var(--brand-blue) 48%, #0B4FA8 100%);
             border-bottom: 1px solid rgba(255, 255, 255, 0.18);
             padding: 12px 32px;
             display: flex;
@@ -115,7 +108,7 @@ limitations under the License.
             top: 0;
             z-index: 1000;
             backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px var(--joy-red-shadow);
+            box-shadow: 0 10px 30px var(--brand-blue-shadow);
             color: #ffffff;
         }
 
@@ -123,17 +116,6 @@ limitations under the License.
             display: flex;
             align-items: center;
             gap: 20px;
-        }
-
-        .logo {
-            width: 50px;
-            height: 50px;
-            padding: 5px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 8px 22px rgba(80, 0, 6, 0.22);
-            line-height: 0;
-            cursor: pointer;
         }
 
         .title-section h1 {
@@ -587,7 +569,7 @@ limitations under the License.
             background: var(--accent-hover);
             border-color: var(--accent-hover);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px var(--joy-red-ring);
+            box-shadow: 0 4px 12px var(--brand-blue-ring);
         }
 
         /* Tab-style underline (for future use) */
@@ -699,7 +681,7 @@ limitations under the License.
 
         .input-source-tab:hover {
             color: var(--text-primary);
-            background: var(--joy-red-soft);
+            background: var(--brand-blue-soft);
         }
 
         .input-source-tab.active {
@@ -835,6 +817,8 @@ limitations under the License.
             grid-template-rows: repeat(var(--video-rows, 1), minmax(0, 1fr));
             gap: 3px;
             min-height: 480px;
+            height: 100%;
+            flex: 1 1 auto;
             width: 100%;
             max-width: 100%;
             overflow: hidden;
@@ -842,8 +826,16 @@ limitations under the License.
         }
 
         .video-grid.single-mode {
-            display: block;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr);
             min-height: 240px;
+            height: 100%;
+        }
+
+        .video-grid.single-mode .video-tile {
+            width: 100%;
+            height: 100%;
         }
 
         .video-grid.single-mode .video-tile:not(:first-child) {
@@ -856,6 +848,8 @@ limitations under the License.
 
         .video-tile {
             position: relative;
+            width: 100%;
+            height: 100%;
             min-width: 0;
             min-height: 0;
             overflow: hidden;
@@ -874,13 +868,18 @@ limitations under the License.
             margin-top: 0;
         }
 
-        .dynamic-video-row select {
+        .dynamic-video-row select,
+        .dynamic-video-row input {
             min-width: 0;
             flex: 1 1 auto;
         }
 
         .dynamic-video-row .icon-btn {
             flex: 0 0 28px;
+        }
+
+        .rtsp-source-row + .rtsp-source-row {
+            margin-top: 10px;
         }
 
         .add-video-btn {
@@ -891,9 +890,13 @@ limitations under the License.
 
         .video-tile video,
         .video-tile .http-video-stream {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             min-height: 0;
+            max-height: none;
+            object-fit: contain;
         }
 
         .video-tile-label {
@@ -1049,13 +1052,13 @@ limitations under the License.
             max-width: 80%;
             max-height: 80%;
             border-radius: 16px;
-            background: linear-gradient(135deg, var(--joy-red-light), var(--joy-red) 52%, var(--joy-red-dark));
+            background: linear-gradient(135deg, var(--brand-blue-light), var(--brand-blue) 52%, var(--brand-blue-dark));
             border: none;
             color: white;
             font-size: 20px;
             font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 12px 30px rgba(143, 17, 26, 0.36);
+            box-shadow: 0 12px 30px rgba(11, 79, 168, 0.36);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1068,7 +1071,7 @@ limitations under the License.
 
         .big-start-btn:hover:not(:disabled):not(.animating) {
             transform: translate(-50%, -50%) scale(1.05);
-            box-shadow: 0 16px 38px rgba(143, 17, 26, 0.46);
+            box-shadow: 0 16px 38px rgba(11, 79, 168, 0.46);
             opacity: 0.95;
         }
 
@@ -1102,9 +1105,9 @@ limitations under the License.
                 width: 140px;
                 height: 140px;
                 border-radius: 16px;
-                background: linear-gradient(135deg, var(--joy-red-light), var(--joy-red) 52%, var(--joy-red-dark));
+                background: linear-gradient(135deg, var(--brand-blue-light), var(--brand-blue) 52%, var(--brand-blue-dark));
                 font-size: 20px;
-                box-shadow: 0 12px 30px rgba(143, 17, 26, 0.36);
+                box-shadow: 0 12px 30px rgba(11, 79, 168, 0.36);
             }
             100% {
                 top: 16px;
@@ -1500,8 +1503,8 @@ limitations under the License.
             margin-left: 0;
             margin-right: auto;
             padding: 6px 12px;
-            background: linear-gradient(135deg, rgba(200, 30, 42, 0.12) 0%, rgba(143, 17, 26, 0.06) 100%);
-            border: 1px solid rgba(200, 30, 42, 0.24);
+            background: linear-gradient(135deg, rgba(16, 103, 209, 0.12) 0%, rgba(11, 79, 168, 0.06) 100%);
+            border: 1px solid rgba(16, 103, 209, 0.24);
             border-radius: 16px 16px 16px 4px;
             max-width: 90%;
             word-wrap: break-word;
@@ -1541,7 +1544,7 @@ limitations under the License.
         .result-text.background-result {
             width: min(100%, 760px);
             border-color: rgba(255, 167, 38, 0.34);
-            background: linear-gradient(135deg, rgba(255, 167, 38, 0.14), rgba(200, 30, 42, 0.06));
+            background: linear-gradient(135deg, rgba(255, 167, 38, 0.14), rgba(16, 103, 209, 0.06));
         }
 
         .background-result-shell {
@@ -1665,7 +1668,7 @@ limitations under the License.
             border: 1px solid rgba(255, 167, 38, 0.42);
             border-radius: 999px;
             padding: 6px 11px;
-            background: linear-gradient(135deg, rgba(255, 167, 38, 0.18), rgba(200, 30, 42, 0.12));
+            background: linear-gradient(135deg, rgba(255, 167, 38, 0.18), rgba(16, 103, 209, 0.12));
             color: var(--text-primary);
             cursor: pointer;
             font-size: 13px;
@@ -1676,7 +1679,7 @@ limitations under the License.
         }
 
         .background-jump-button:hover {
-            background: linear-gradient(135deg, rgba(255, 167, 38, 0.25), rgba(200, 30, 42, 0.18));
+            background: linear-gradient(135deg, rgba(255, 167, 38, 0.25), rgba(16, 103, 209, 0.18));
         }
 
         .background-jump-button i,
@@ -1851,7 +1854,7 @@ limitations under the License.
             overflow: auto;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            background: rgba(12, 10, 10, 0.72);
+            background: rgba(9, 15, 24, 0.72);
             color: var(--text-primary);
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
             font-size: 13px;
@@ -1897,7 +1900,7 @@ limitations under the License.
             align-items: center;
             justify-content: center;
             padding: 24px;
-            background: rgba(8, 6, 6, 0.54);
+            background: rgba(6, 11, 18, 0.54);
             backdrop-filter: blur(18px) saturate(145%);
             -webkit-backdrop-filter: blur(18px) saturate(145%);
         }
@@ -1910,7 +1913,7 @@ limitations under the License.
             overflow: hidden;
             border: 1px solid rgba(255, 167, 38, 0.34);
             border-radius: 8px;
-            background: rgba(24, 18, 18, 0.96);
+            background: rgba(15, 24, 38, 0.96);
             box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
         }
 
@@ -1997,8 +2000,8 @@ limitations under the License.
             inset: -0.5rem;
             border-radius: 24px;
             background:
-                linear-gradient(180deg, rgba(20, 17, 17, 0.82), rgba(42, 24, 27, 0.98)),
-                radial-gradient(circle at 50% 0, rgba(200, 30, 42, 0.18), transparent 48%);
+                linear-gradient(180deg, rgba(17, 23, 33, 0.82), rgba(23, 42, 67, 0.98)),
+                radial-gradient(circle at 50% 0, rgba(16, 103, 209, 0.18), transparent 48%);
             opacity: 0;
             pointer-events: none;
             z-index: 0;
@@ -2020,7 +2023,7 @@ limitations under the License.
                 repeating-linear-gradient(
                     90deg,
                     transparent 0 6px,
-                    var(--joy-red-light) 6px 9px,
+                    var(--brand-blue-light) 6px 9px,
                     transparent 9px 15px
                 );
             mask-image: linear-gradient(
@@ -2048,8 +2051,8 @@ limitations under the License.
         .chat-prompt-shell.voice-ripple-active {
             isolation: isolate;
             background: transparent;
-            border-color: rgba(200, 30, 42, 0.28);
-            box-shadow: 0 -12px 36px rgba(24, 8, 10, 0.28);
+            border-color: rgba(16, 103, 209, 0.28);
+            box-shadow: 0 -12px 36px rgba(7, 28, 55, 0.28);
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
@@ -2077,8 +2080,8 @@ limitations under the License.
         }
 
         .chat-prompt-shell:focus-within {
-            border-color: rgba(200, 30, 42, 0.5);
-            box-shadow: 0 0 0 3px rgba(200, 30, 42, 0.13);
+            border-color: rgba(16, 103, 209, 0.5);
+            box-shadow: 0 0 0 3px rgba(16, 103, 209, 0.13);
         }
 
         .chat-prompt-action {
@@ -2117,16 +2120,16 @@ limitations under the License.
         }
 
         .chat-prompt-action.send {
-            background: linear-gradient(135deg, var(--joy-red-light), var(--joy-red) 58%, var(--joy-red-dark));
+            background: linear-gradient(135deg, var(--brand-blue-light), var(--brand-blue) 58%, var(--brand-blue-dark));
             border-color: rgba(255, 255, 255, 0.12);
             color: white;
-            box-shadow: 0 8px 18px rgba(143, 17, 26, 0.28);
+            box-shadow: 0 8px 18px rgba(11, 79, 168, 0.28);
         }
 
         .chat-prompt-action.send:hover {
-            background: linear-gradient(135deg, #ff6870, var(--joy-red) 54%, var(--joy-red-dark));
+            background: linear-gradient(135deg, #6AA8F0, var(--brand-blue) 54%, var(--brand-blue-dark));
             border-color: rgba(255, 255, 255, 0.18);
-            box-shadow: 0 10px 24px rgba(143, 17, 26, 0.36);
+            box-shadow: 0 10px 24px rgba(11, 79, 168, 0.36);
         }
 
         .chat-prompt-action.send .lucide {
@@ -2180,10 +2183,10 @@ limitations under the License.
         }
 
         .speech-control.recording {
-            background: linear-gradient(135deg, var(--joy-red-light), var(--joy-red) 58%, var(--joy-red-dark));
+            background: linear-gradient(135deg, var(--brand-blue-light), var(--brand-blue) 58%, var(--brand-blue-dark));
             border-color: rgba(255, 255, 255, 0.14);
             color: white;
-            box-shadow: 0 8px 18px rgba(143, 17, 26, 0.28);
+            box-shadow: 0 8px 18px rgba(11, 79, 168, 0.28);
         }
 
         .speech-control.recording .lucide {
@@ -2301,10 +2304,10 @@ limitations under the License.
             top: -1px; /* Overlap balloon's top border */
             right: -1px; /* Overlap balloon's right border */
             background: var(--bg-secondary);
-            border-top: 1px solid rgba(200, 30, 42, 0.24);
-            border-right: 1px solid rgba(200, 30, 42, 0.24);
-            border-left: 1px solid rgba(200, 30, 42, 0.24);
-            border-bottom: 1px solid rgba(200, 30, 42, 0.24);
+            border-top: 1px solid rgba(16, 103, 209, 0.24);
+            border-right: 1px solid rgba(16, 103, 209, 0.24);
+            border-left: 1px solid rgba(16, 103, 209, 0.24);
+            border-bottom: 1px solid rgba(16, 103, 209, 0.24);
             border-radius: 0 16px 0 0; /* Match top-right corner of balloon */
             color: var(--text-secondary);
             padding: 4px 10px;
@@ -2365,8 +2368,8 @@ limitations under the License.
         }
 
         .copy-button-embedded.copied {
-            background: rgba(200, 30, 42, 0.58);
-            border-color: rgba(200, 30, 42, 0.38);
+            background: rgba(16, 103, 209, 0.58);
+            border-color: rgba(16, 103, 209, 0.38);
         }
 
         .copy-button-embedded.copied .lucide {
@@ -2576,15 +2579,15 @@ limitations under the License.
             0% {
                 transform: scale(0.95);
                 opacity: 0.8;
-                box-shadow: 0 0 0 0 rgba(200, 30, 42, 0.38);
+                box-shadow: 0 0 0 0 rgba(16, 103, 209, 0.38);
             }
             50% {
-                box-shadow: 0 0 20px 4px rgba(200, 30, 42, 0.42);
+                box-shadow: 0 0 20px 4px rgba(16, 103, 209, 0.42);
             }
             100% {
                 transform: scale(1);
                 opacity: 1;
-                box-shadow: 0 0 0 0 rgba(200, 30, 42, 0);
+                box-shadow: 0 0 0 0 rgba(16, 103, 209, 0);
             }
         }
 
@@ -2669,19 +2672,6 @@ limitations under the License.
             width: 1em;
             height: 1em;
             vertical-align: middle;
-        }
-
-        .logo .lucide,
-        .logo svg {
-            width: 100%;
-            height: 100%;
-            filter: none;
-        }
-
-        /* Logo color - theme-aware (subtle glow on light background) */
-        body.light-theme .logo .lucide,
-        body.light-theme .logo svg {
-            filter: none;
         }
 
         .icon-btn .lucide,
@@ -2778,7 +2768,7 @@ limitations under the License.
             stroke: rgb(13, 148, 136); /* Darker teal for light mode */
         }
 
-        /* Action button icons (play, stop) - White for contrast on red button */
+        /* Action button icons (play, stop) - White for contrast on primary button */
         .btn-primary .lucide {
             stroke: white !important;
         }
@@ -2797,7 +2787,7 @@ limitations under the License.
         #apiKey,
         #modelSelect,
         #cameraSelect,
-        #rtspUrl {
+        .rtsp-url-input {
             transition: all 0.3s ease;
         }
 
@@ -2808,7 +2798,7 @@ limitations under the License.
         #apiBaseUrl:focus,
         #apiKey:focus,
         #modelSelect:focus,
-        #rtspUrl:focus {
+        .rtsp-url-input:focus {
             border-color: rgba(200, 200, 200, 0.6) !important;
             box-shadow: 0 0 0 2px rgba(200, 200, 200, 0.15),
                         0 0 8px rgba(200, 200, 200, 0.2) !important;
@@ -2824,7 +2814,7 @@ limitations under the License.
 
         body.colorful-focus #processEvery:focus,
         body.colorful-focus #cameraSelect:focus,
-        body.colorful-focus #rtspUrl:focus {
+        body.colorful-focus .rtsp-url-input:focus {
             border-color: rgb(59, 130, 246) !important;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3),
                         0 0 12px rgba(59, 130, 246, 0.4) !important;
@@ -2841,16 +2831,16 @@ limitations under the License.
         /* Bright flash animation when applied (on blur) */
         @keyframes settingApplied {
             0% {
-                box-shadow: 0 0 0 0 rgba(200, 30, 42, 0.62),
-                           0 0 20px rgba(200, 30, 42, 0.52);
+                box-shadow: 0 0 0 0 rgba(16, 103, 209, 0.62),
+                           0 0 20px rgba(16, 103, 209, 0.52);
             }
             50% {
-                box-shadow: 0 0 0 6px rgba(200, 30, 42, 0.24),
-                           0 0 30px rgba(200, 30, 42, 0.38);
+                box-shadow: 0 0 0 6px rgba(16, 103, 209, 0.24),
+                           0 0 30px rgba(16, 103, 209, 0.38);
             }
             100% {
-                box-shadow: 0 0 0 0 rgba(200, 30, 42, 0),
-                           0 0 0 rgba(200, 30, 42, 0);
+                box-shadow: 0 0 0 0 rgba(16, 103, 209, 0),
+                           0 0 0 rgba(16, 103, 209, 0);
             }
         }
 
@@ -2860,7 +2850,7 @@ limitations under the License.
         #apiKey.applied,
         #modelSelect.applied,
         #cameraSelect.applied,
-        #rtspUrl.applied {
+        .rtsp-url-input.applied {
             animation: settingApplied 0.6s ease-out;
         }
 
@@ -2965,14 +2955,6 @@ limitations under the License.
             .header-left {
                 min-width: 0;
                 gap: 10px;
-            }
-
-            .logo {
-                width: 38px;
-                height: 38px;
-                padding: 4px;
-                border-radius: 10px;
-                flex: 0 0 auto;
             }
 
             .title-section h1 {
@@ -3420,10 +3402,10 @@ limitations under the License.
                 <stop offset="100%" style="stop-color:rgb(168, 85, 247);stop-opacity:1" />
             </linearGradient>
 
-            <!-- JoyAI Red gradient -->
+            <!-- Primary brand gradient -->
             <linearGradient id="gradient-green" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:rgb(240, 82, 91);stop-opacity:1" />
-                <stop offset="100%" style="stop-color:rgb(200, 30, 42);stop-opacity:1" />
+                <stop offset="0%" style="stop-color:rgb(74, 144, 226);stop-opacity:1" />
+                <stop offset="100%" style="stop-color:rgb(16, 103, 209);stop-opacity:1" />
             </linearGradient>
         </defs>
     </svg>
@@ -3436,7 +3418,7 @@ limitations under the License.
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
     <script>
-        document.title = 'JoyAI VL Live';
+        document.title = 'VL Live';
 
         // Initialize Lucide icons immediately when DOM is ready
         if (document.readyState === 'loading') {
@@ -3450,15 +3432,8 @@ limitations under the License.
     <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <div class="logo" id="jdLogo" role="button" tabindex="0" aria-label="Refresh page">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-hidden="true">
-                    <rect width="128" height="128" rx="28" fill="#c81e2a"/>
-                    <path fill="#fff" d="M25 34h24v38c0 15-9 24-24 24-7 0-13-2-18-5l7-16c3 2 6 3 9 3 5 0 8-3 8-9V52h-6z"/>
-                    <path fill="#fff" d="M60 34h25c22 0 36 12 36 31s-14 31-36 31H60zm24 44c11 0 18-5 18-13s-7-13-18-13h-5v26z"/>
-                </svg>
-            </div>
             <div class="title-section">
-                <h1>JoyAI VL Live</h1>
+                <h1>VL Live</h1>
             </div>
         </div>
         <div class="header-right">
@@ -3795,7 +3770,7 @@ limitations under the License.
                         <div class="form-group">
                             <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 8px;">
                                 <div class="tooltip-wrapper" style="margin-bottom: 0; flex: 1;">
-                                    <label style="margin-bottom: 0;">RTSP Stream URL</label>
+                                    <label style="margin-bottom: 0;">RTSP Stream URLs</label>
                                     <span class="tooltip-icon">ℹ</span>
                                     <div class="tooltip-text">
                                         <strong>Format:</strong> rtsp://[user:pass@]ip:port/path<br><br>
@@ -3804,12 +3779,10 @@ limitations under the License.
                                         • rtsp://admin:password@192.168.1.100:554/h264Preview_01_main
                                     </div>
                                 </div>
-                                <button class="icon-btn" id="testRtspBtn" title="Test Connection">
-                                    <i data-lucide="test-tube-diagonal"></i>
-                                </button>
                             </div>
-                            <input type="text" id="rtspUrl" placeholder="rtsp://192.168.1.100:554/stream" style="margin-bottom: 16px;">
-                            <div id="rtspStatus" class="input-hint" style="margin-top: -8px; margin-bottom: 12px; display: none;"></div>
+                            <div id="rtspRows"></div>
+                            <button class="btn btn-secondary add-video-btn" id="addRtspBtn" type="button">+ Add RTSP stream</button>
+                            <div class="input-hint">Each RTSP stream is processed independently and displayed in the adaptive grid.</div>
                         </div>
                     </div>
 
@@ -4059,7 +4032,6 @@ limitations under the License.
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
         const themeText = document.getElementById('themeText');
-        const jdLogo = document.getElementById('jdLogo');
         const videoElement = document.getElementById('videoElement');
         const videoGrid = document.getElementById('videoGrid');
         let httpVideoElements = [...document.querySelectorAll('.http-video-stream')];
@@ -4068,6 +4040,10 @@ limitations under the License.
         const videoFileMode = document.getElementById('videoFileMode');
         const serverVideoInputs = document.getElementById('serverVideoInputs');
         const uploadVideoInputs = document.getElementById('videoFileInputs');
+        const rtspRows = document.getElementById('rtspRows');
+        const addRtspBtn = document.getElementById('addRtspBtn');
+        let rtspUrlInputs = [];
+        let activeRtspSessionIds = [];
         const serverVideoDirectory = document.getElementById('serverVideoDirectory');
         const serverVideoRows = document.getElementById('serverVideoRows');
         const addServerVideoBtn = document.getElementById('addServerVideoBtn');
@@ -4140,6 +4116,8 @@ limitations under the License.
         let pendingTtsText = '';
         let ttsFinishTimer = null;
         let currentPromptText = '';
+        // Preserve the latest applied prompt across inference turns and reconnects.
+        let promptHasBeenSet = false;
         let vlmHistory = [];
         let backgroundTaskEntries = new Map();
         let backgroundSummaryEntries = new Map();
@@ -4178,7 +4156,6 @@ limitations under the License.
         let selectedCameraId = null;
         let videoDevices = [];
         let preferredCameraFacing = 'environment';
-        let rtspSessionId = 'default';  // For RTSP mode
         // Enable markdown by default (user can disable if they prefer raw text)
         let markdownEnabled = localStorage.getItem('markdownEnabled') !== 'false';
 
@@ -4369,7 +4346,8 @@ limitations under the License.
                     fileControls.style.display = 'none';
                     rtspBetaWarning.style.display = 'none';
                 } else if (source === 'rtsp') {
-                    videoGrid.classList.add('single-mode');
+                    videoGrid.classList.remove('single-mode');
+                    syncRtspVideoLayout();
                     webcamControls.style.display = 'none';
                     rtspControls.style.display = 'block';
                     fileControls.style.display = 'none';
@@ -4396,11 +4374,16 @@ limitations under the License.
             return `${(value / (1024 * 1024)).toFixed(1)} MB`;
         }
 
-        function renderVideoTiles(count) {
+        function renderVideoTiles(count, labelPrefix = 'Video') {
             const tileCount = Math.max(1, Number(count) || 1);
             const columns = tileCount === 1 ? 1 : Math.ceil(Math.sqrt(tileCount));
             const rows = Math.ceil(tileCount / columns);
             const wasMirrored = videoElement.classList.contains('mirrored');
+
+            // RTSP and local-file tabs rebuild the grid. Keep the one-source
+            // layout in single mode too, so its tile fills the whole card just
+            // like Webcam; only use the adaptive grid for two or more sources.
+            videoGrid.classList.toggle('single-mode', tileCount === 1);
 
             videoGrid.replaceChildren();
             for (let index = 0; index < tileCount; index += 1) {
@@ -4411,7 +4394,7 @@ limitations under the License.
 
                 const label = document.createElement('span');
                 label.className = 'video-tile-label';
-                label.textContent = `Video ${videoId}`;
+                label.textContent = `${labelPrefix} ${videoId}`;
                 tile.appendChild(label);
 
                 if (index === 0) {
@@ -4555,29 +4538,19 @@ limitations under the License.
         addServerVideoRow();
         loadServerVideoLibrary();
 
-        // Clear RTSP status message when user types
-        const rtspUrlInput = document.getElementById('rtspUrl');
-        rtspUrlInput.addEventListener('input', () => {
-            const statusDiv = document.getElementById('rtspStatus');
-            statusDiv.style.display = 'none';
-        });
+        function refreshRtspInputs() {
+            rtspUrlInputs = [...rtspRows.querySelectorAll('.rtsp-url-input')];
+            rtspUrlInputs.forEach((input, index) => {
+                input.setAttribute('aria-label', `RTSP stream ${index + 1} URL`);
+            });
+        }
 
-        // Green flash animation when RTSP URL is set (same as API Base URL)
-        rtspUrlInput.addEventListener('blur', () => {
-            if (rtspUrlInput.value.trim()) {
-                rtspUrlInput.classList.add('applied');
-                setTimeout(() => {
-                    rtspUrlInput.classList.remove('applied');
-                }, 600);
-            }
-        });
+        function syncRtspVideoLayout() {
+            renderVideoTiles(Math.max(1, rtspUrlInputs.length), 'RTSP');
+        }
 
-        // Test RTSP connection
-        document.getElementById('testRtspBtn').addEventListener('click', async () => {
-            const rtspUrl = document.getElementById('rtspUrl').value.trim();
-            const statusDiv = document.getElementById('rtspStatus');
-            const testBtn = document.getElementById('testRtspBtn');
-
+        async function testRtspConnection(input, statusDiv, testBtn) {
+            const rtspUrl = input.value.trim();
             if (!rtspUrl) {
                 statusDiv.textContent = '⚠️ Please enter an RTSP URL';
                 statusDiv.style.display = 'block';
@@ -4589,44 +4562,92 @@ limitations under the License.
             statusDiv.textContent = '🔄 Testing connection...';
             statusDiv.style.display = 'block';
             statusDiv.style.color = '#76b900';
-
             try {
                 const response = await fetch('/api/rtsp/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         rtsp_url: rtspUrl,
-                        session_id: 'test-' + Date.now()
+                        session_id: `test-${Date.now()}-${Math.random().toString(36).slice(2)}`
                     })
                 });
-
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Connection failed');
 
-                if (response.ok) {
-                    const info = data.stream_info;
-                    statusDiv.innerHTML = `✅ Connected!<br>${info.codec} ${info.width}x${info.height} @${info.fps}fps`;
-                    statusDiv.style.color = '#76b900';
-
-                    // Stop the test connection after 2 seconds
-                    setTimeout(async () => {
-                        await fetch('/api/rtsp/stop', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ session_id: data.session_id })
-                        });
-                    }, 2000);
-                } else {
-                    statusDiv.textContent = '❌ ' + (data.error || 'Connection failed');
-                    statusDiv.style.color = '#ff6b35';
-                }
-            } catch (err) {
-                console.error('RTSP test error:', err);
-                statusDiv.textContent = '❌ Connection failed: ' + err.message;
+                const info = data.stream_info;
+                statusDiv.innerHTML = `✅ Connected!<br>${info.codec} ${info.width}x${info.height} @${info.fps}fps`;
+                statusDiv.style.color = '#76b900';
+                setTimeout(() => fetch('/api/rtsp/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: data.session_id })
+                }), 2000);
+            } catch (error) {
+                console.error('RTSP test error:', error);
+                statusDiv.textContent = `❌ Connection failed: ${error.message}`;
                 statusDiv.style.color = '#ff6b35';
             } finally {
                 testBtn.disabled = false;
             }
-        });
+        }
+
+        function addRtspRow(value = '') {
+            const sourceRow = document.createElement('div');
+            sourceRow.className = 'rtsp-source-row';
+            const row = document.createElement('div');
+            row.className = 'dynamic-video-row';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'rtsp-url-input';
+            input.placeholder = 'rtsp://192.168.1.100:554/stream';
+            input.value = value;
+
+            const testButton = document.createElement('button');
+            testButton.className = 'icon-btn rtsp-test-btn';
+            testButton.type = 'button';
+            testButton.title = 'Test connection';
+            testButton.setAttribute('aria-label', 'Test RTSP connection');
+            testButton.innerHTML = '<i data-lucide="test-tube-diagonal"></i>';
+
+            const removeButton = document.createElement('button');
+            removeButton.className = 'icon-btn rtsp-remove-btn';
+            removeButton.type = 'button';
+            removeButton.title = 'Remove RTSP stream';
+            removeButton.setAttribute('aria-label', 'Remove RTSP stream');
+            removeButton.textContent = '×';
+
+            const status = document.createElement('div');
+            status.className = 'input-hint rtsp-status';
+            status.style.display = 'none';
+
+            input.addEventListener('input', () => { status.style.display = 'none'; });
+            input.addEventListener('blur', () => {
+                if (!input.value.trim()) return;
+                input.classList.add('applied');
+                setTimeout(() => input.classList.remove('applied'), 600);
+            });
+            testButton.addEventListener('click', () => testRtspConnection(input, status, testButton));
+            removeButton.addEventListener('click', () => {
+                if (rtspRows.children.length === 1) {
+                    input.value = '';
+                    status.style.display = 'none';
+                    return;
+                }
+                sourceRow.remove();
+                refreshRtspInputs();
+                syncRtspVideoLayout();
+            });
+
+            row.append(input, testButton, removeButton);
+            sourceRow.append(row, status);
+            rtspRows.appendChild(sourceRow);
+            refreshRtspInputs();
+            syncRtspVideoLayout();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        addRtspBtn.addEventListener('click', () => addRtspRow());
+        addRtspRow();
 
         // Tooltip positioning - dynamically position tooltip to avoid clipping
         document.querySelectorAll('.tooltip-wrapper').forEach(wrapper => {
@@ -6056,7 +6077,6 @@ limitations under the License.
             lastText = '';
             lastTtsEventKey = '';
             lastHistoryKey = null;
-            currentPromptText = '';
             pendingPromptEntry = null;
 
             resultText.classList.remove('fade');
@@ -6820,7 +6840,6 @@ limitations under the License.
                 pendingEntry.backgroundHandoff = resolvedBackgroundHandoff || pendingEntry.backgroundHandoff || null;
                 pendingEntry.pending = false;
                 lastHistoryKey = historyKey;
-                currentPromptText = '';
                 pendingPromptEntry = null;
 
                 if (pendingEntry.responseElement) {
@@ -6854,7 +6873,6 @@ limitations under the License.
                 };
                 vlmHistory.push(entry);
                 lastHistoryKey = historyKey;
-                currentPromptText = '';
                 appendVlmHistoryEntry(entry, { animateLast: true });
             }
 
@@ -6919,17 +6937,6 @@ limitations under the License.
         }
 
         // Theme Toggle: cycles through Auto -> Light -> Dark -> Auto
-        jdLogo.addEventListener('click', () => {
-            window.location.reload();
-        });
-
-        jdLogo.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                window.location.reload();
-            }
-        });
-
         themeToggle.addEventListener('click', () => {
             const currentTheme = localStorage.getItem('theme') || 'auto';
             let nextTheme;
@@ -6979,7 +6986,7 @@ limitations under the License.
             document.body.classList.add('colorful-focus');
             colorfulFocusToggle.checked = true;
         } else {
-            // Default: neutral white/gray icons and focus glows with red flash
+            // Default: neutral white/gray icons and focus glows with blue flash
             document.body.classList.remove('colorful-focus');
             colorfulFocusToggle.checked = false;
         }
@@ -7517,6 +7524,7 @@ limitations under the License.
             const newPrompt = cleanBackgroundQuestionText(promptText.value.trim());
 
             currentPromptText = newPrompt;
+            promptHasBeenSet = true;
             if (newPrompt) {
                 appendPromptHistoryEntry(newPrompt);
             } else {
@@ -7530,7 +7538,7 @@ limitations under the License.
                 }));
             }
 
-            // Clear input after applying (one-shot mode)
+            // Clear only the editor; the applied prompt remains active.
             promptText.value = '';
             resizePromptInput();
             return true;
@@ -8383,6 +8391,12 @@ limitations under the License.
                     console.log('Initializing server with current model:', currentModel);
                     applyApiSettings({ showFeedback: false });
                 }
+                if (promptHasBeenSet) {
+                    websocket.send(JSON.stringify({
+                        type: 'update_prompt',
+                        prompt: currentPromptText
+                    }));
+                }
             };
 
             ws.onmessage = (event) => {
@@ -8556,6 +8570,9 @@ limitations under the License.
                     if (data.background_model) {
                         applyBackgroundConfig(data.background_model);
                     }
+                    if (!promptHasBeenSet && data.prompt != null) {
+                        currentPromptText = String(data.prompt).trim();
+                    }
                     const reqCb = document.getElementById('debugShowRequestPayload');
                     const resCb = document.getElementById('debugShowResponsePayload');
                     const memCb = document.getElementById('debugShowMemoryState');
@@ -8637,19 +8654,24 @@ limitations under the License.
                 }
             }
 
-            sessionId = crypto.randomUUID ? crypto.randomUUID() : 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-            console.log('Session reset:', oldSessionId, '->', sessionId);
-
-            // Reconnect WebSocket with new session_id
+            // Close the old control channel before cancelling its streams and
+            // inference tasks. Do not open a replacement session until cleanup
+            // finishes, otherwise Stop appears to keep sending requests.
             if (websocket) {
                 websocket.close();
                 websocket = null;
             }
+
+            if (cleanupServer) {
+                await cleanupServerSession(oldSessionId);
+            }
+
+            sessionId = crypto.randomUUID ? crypto.randomUUID() : 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            console.log('Session reset:', oldSessionId, '->', sessionId);
             connectWebSocket();
 
             // Clear prompt input
             promptText.value = '';
-            currentPromptText = '';
 
             if (clearConversation) {
                 clearVlmConversation();
@@ -8664,9 +8686,6 @@ limitations under the License.
                 renderVlmHistory();
             }
 
-            if (cleanupServer) {
-                await cleanupServerSession(oldSessionId);
-            }
         }
 
         // Start - dispatch based on the active video source tab
@@ -9055,61 +9074,94 @@ limitations under the License.
             }
         }
 
-        // Start RTSP mode. The processed preview is MJPEG over same-origin
-        // HTTP/TCP, so it also works through the WebUI SSH port forward.
+        function setRtspControlsDisabled(disabled) {
+            rtspUrlInputs.forEach(input => { input.disabled = disabled; });
+            rtspRows.querySelectorAll('.icon-btn').forEach(button => { button.disabled = disabled; });
+            addRtspBtn.disabled = disabled;
+        }
+
+        async function stopActiveRtspSessions() {
+            const sessionIds = [...activeRtspSessionIds];
+            activeRtspSessionIds = [];
+            await Promise.allSettled(sessionIds.map(rtspSessionId => fetch('/api/rtsp/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: rtspSessionId })
+            })));
+        }
+
+        // Multi-RTSP uses independent HTTP/TCP MJPEG streams. A single RTSP
+        // source can still use WebRTC when UDP transport is explicitly enabled.
         async function startRTSP(token) {
+            const startedSessionIds = [];
             try {
                 if (!websocket || websocket.readyState !== WebSocket.OPEN) {
                     connectWebSocket();
                 }
 
-                const rtspUrl = document.getElementById('rtspUrl').value.trim();
-
-                if (!rtspUrl) {
-                    alert('Please enter an RTSP URL');
+                const rtspUrls = rtspUrlInputs.map(input => input.value.trim());
+                if (rtspUrls.some(url => !url)) {
+                    alert('Please enter a URL for every RTSP stream');
                     setVideoWaitingForStream(false);
                     resetVideoButtons();
                     return;
                 }
 
-                updateStatus('Connecting to RTSP stream...', 'processing');
-                if (webrtcTransport === 'udp') {
-                    await startRtspWebRtc(rtspUrl, token);
-                    rtspUrlInput.disabled = true;
-                    document.getElementById('testRtspBtn').disabled = true;
+                renderVideoTiles(rtspUrls.length, 'RTSP');
+                updateStatus(`Connecting to ${rtspUrls.length} RTSP stream(s)...`, 'processing');
+                setRtspControlsDisabled(true);
+
+                if (webrtcTransport === 'udp' && rtspUrls.length === 1) {
+                    await startRtspWebRtc(rtspUrls[0], token);
                     return;
                 }
-                const response = await fetch('/api/rtsp/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rtsp_url: rtspUrl,
-                        session_id: sessionId,
-                        stream_to_browser: true,
-                    })
-                });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to connect to RTSP stream');
-                }
+                const streams = await Promise.all(rtspUrls.map(async (rtspUrl, index) => {
+                    const videoId = String(index + 1);
+                    const response = await fetch('/api/rtsp/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            rtsp_url: rtspUrl,
+                            parent_session_id: sessionId,
+                            video_id: videoId,
+                            stream_to_browser: true,
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(`Video ${videoId}: ${data.error || 'Failed to connect'}`);
+                    }
+                    startedSessionIds.push(data.session_id);
+                    return { videoId, sessionId: data.session_id };
+                }));
+                activeRtspSessionIds = [...startedSessionIds];
 
                 videoElement.style.display = 'none';
-                const element = httpVideoElements[0];
-                const streamUrl = new URL('/api/rtsp/stream', window.location.origin);
-                streamUrl.searchParams.set('session_id', sessionId);
-                element.style.display = 'block';
-                element.onload = () => {
-                    if (token !== streamStartToken) return;
-                    isAnalysisRunning = true;
-                    updatePromptAvailability();
-                    revealVideoWhenReady(token);
-                };
-                element.onerror = () => {
-                    if (token !== streamStartToken) return;
-                    updateStatus('RTSP stream ended', 'disconnected');
-                };
-                element.src = streamUrl.toString();
+                const endedVideoIds = new Set();
+                streams.forEach((stream, index) => {
+                    const element = httpVideoElements[index];
+                    const streamUrl = new URL('/api/rtsp/stream', window.location.origin);
+                    streamUrl.searchParams.set('session_id', stream.sessionId);
+                    element.style.display = 'block';
+                    element.onload = () => {
+                        if (token !== streamStartToken) return;
+                        isAnalysisRunning = true;
+                        updatePromptAvailability();
+                        revealVideoWhenReady(token);
+                    };
+                    element.onerror = () => {
+                        if (token !== streamStartToken) return;
+                        endedVideoIds.add(stream.videoId);
+                        const overlay = tileOverlays[index];
+                        overlay.textContent = 'RTSP stream ended';
+                        overlay.style.display = 'block';
+                        if (endedVideoIds.size === streams.length) {
+                            updateStatus('All RTSP streams ended', 'disconnected');
+                        }
+                    };
+                    element.src = streamUrl.toString();
+                });
 
                 // Some Chromium builds do not emit load for an endless MJPEG response.
                 setTimeout(() => {
@@ -9120,11 +9172,17 @@ limitations under the License.
                     }
                 }, 1000);
 
-                // Disable RTSP URL field and Test button while streaming
-                rtspUrlInput.disabled = true;
-                document.getElementById('testRtspBtn').disabled = true;
-
             } catch (error) {
+                activeRtspSessionIds = [...startedSessionIds];
+                await stopActiveRtspSessions();
+                if (startedSessionIds.length > 0) {
+                    await resetSession({ clearConversation: false, cleanupServer: true });
+                }
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                }
+                setRtspControlsDisabled(false);
                 console.error('Error starting RTSP:', error);
                 updateStatus(`Error: ${error.message}`, 'disconnected');
                 alert('Failed to connect to RTSP stream: ' + error.message);
@@ -9181,6 +9239,7 @@ limitations under the License.
             });
             videoElement.style.display = 'block';
             setVideoWaitingForStream(false);
+            await stopActiveRtspSessions();
 
             // Reset session after local tracks are stopped so the backend can cancel
             // any in-flight VLM call and remove old session state.
@@ -9188,15 +9247,7 @@ limitations under the License.
 
             updateStatus('Connected', 'connected');
 
-            // Re-enable RTSP URL field and Test button
-            const rtspUrlInput = document.getElementById('rtspUrl');
-            if (rtspUrlInput) {
-                rtspUrlInput.disabled = false;
-            }
-            const testRtspBtn = document.getElementById('testRtspBtn');
-            if (testRtspBtn) {
-                testRtspBtn.disabled = false;
-            }
+            setRtspControlsDisabled(false);
             videoFileInput.disabled = false;
             serverVideoDirectory.disabled = false;
             serverVideoSelects.forEach(select => { select.disabled = false; });

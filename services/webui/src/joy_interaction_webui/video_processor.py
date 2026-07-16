@@ -83,8 +83,34 @@ class VideoProcessorTrack(VideoStreamTrack):
         self._last_process_time = 0.0  # Wall clock time of last VLM processing
         self._frame_buffer = []  # Buffer for collecting frames before batch send
         self._last_sub_capture_time = 0.0  # Wall clock time of last sub-frame capture
-        self._last_callback_inference_count = 0
-        self._last_callback_response = None
+        initial_metrics = self.vlm_service.get_metrics()
+        self._last_callback_inference_count = int(initial_metrics.get("total_inferences") or 0)
+        self._last_callback_response = self.vlm_service.get_current_response()[0]
+
+    def _emit_text_update(self):
+        """Deliver a completed inference without waiting for another video frame."""
+        if not self.text_callback:
+            return
+
+        response, _ = self.vlm_service.get_current_response()
+        metrics = self.vlm_service.get_metrics()
+        inference_count = int(metrics.get("total_inferences") or 0)
+        has_new_inference = inference_count > self._last_callback_inference_count
+        has_new_response = response != self._last_callback_response
+        if inference_count <= 0 or not (has_new_inference or has_new_response):
+            return
+
+        self._last_callback_inference_count = inference_count
+        self._last_callback_response = response
+        handoff_meta = self.vlm_service.consume_background_handoff_metric()
+        if handoff_meta:
+            metrics = dict(metrics)
+            metrics["background_handoff"] = handoff_meta
+        self.text_callback(response, metrics)
+
+    async def _run_vlm_task(self, coroutine):
+        await coroutine
+        self._emit_text_update()
 
     async def recv(self):
         """
@@ -211,7 +237,7 @@ class VideoProcessorTrack(VideoStreamTrack):
                         )
                     if need_conversion:
                         asyncio.create_task(
-                            self.vlm_service.process_frame(
+                            self._run_vlm_task(self.vlm_service.process_frame(
                                 pil_img,
                                 frame_timing_ms=frame_timing_ms,
                                 frame_metadata={
@@ -220,7 +246,7 @@ class VideoProcessorTrack(VideoStreamTrack):
                                     "pts": frame.pts,
                                     "timestamp_interval_seconds": interval_sec,
                                 },
-                            )
+                            ))
                         )
                         self._last_process_time = now
                         logger.info(f"Frame {self.frame_count}: Sending to VLM (interval={interval_sec}s)")
@@ -273,7 +299,7 @@ class VideoProcessorTrack(VideoStreamTrack):
                         batch = list(self._frame_buffer)
                         self._frame_buffer.clear()
                         asyncio.create_task(
-                            self.vlm_service.process_frame_batch(batch)
+                            self._run_vlm_task(self.vlm_service.process_frame_batch(batch))
                         )
                         self._last_process_time = now
                         logger.info(
@@ -281,25 +307,8 @@ class VideoProcessorTrack(VideoStreamTrack):
                             f"(interval={interval_sec}s, batch={frames_per_batch})"
                         )
 
-            # Get current response (may be old if VLM is still processing)
-            response, is_processing = self.vlm_service.get_current_response()
-
-            # Get metrics
-            metrics = self.vlm_service.get_metrics()
-
             # Send text update via callback (for WebSocket)
-            if self.text_callback:
-                inference_count = int(metrics.get("total_inferences") or 0)
-                has_new_inference = inference_count > self._last_callback_inference_count
-                has_new_response = response != self._last_callback_response
-                if inference_count > 0 and (has_new_inference or has_new_response):
-                    self._last_callback_inference_count = inference_count
-                    self._last_callback_response = response
-                    handoff_meta = self.vlm_service.consume_background_handoff_metric()
-                    if handoff_meta:
-                        metrics = dict(metrics)
-                        metrics["background_handoff"] = handoff_meta
-                    self.text_callback(response, metrics)
+            self._emit_text_update()
 
             # Return original frame directly - zero-copy passthrough!
             # This avoids expensive BGR→YUV conversion

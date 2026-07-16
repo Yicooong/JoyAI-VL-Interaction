@@ -8,7 +8,6 @@ Image assets served by the WebUI.
 
 ```text
 images/
-├── simple-logo.svg
 ├── *.png
 └── README.md
 ```

@@ -423,8 +423,6 @@ class VLMService:
                     if self._closed:
                         return
                     self.current_response = response
-                    if captured_prompt and self.prompt == captured_prompt:
-                        self.prompt = None
                     if consumed_background_handoff:
                         logger.info("Consumed background handoff metadata for session %s", self.session_id)
                 finally:
@@ -562,8 +560,6 @@ class VLMService:
                     if self._closed:
                         return
                     self.current_response = response
-                    if captured_prompt and self.prompt == captured_prompt:
-                        self.prompt = None
                     if consumed_background_handoff:
                         logger.info("Consumed background handoff metadata for session %s", self.session_id)
                 finally:
