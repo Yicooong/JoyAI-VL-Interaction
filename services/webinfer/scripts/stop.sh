@@ -11,7 +11,11 @@ fi
 SUMMARY_PORT="${SUMMARY_PORT:-8065}"
 MAIN_MODEL_PORT="${MAIN_MODEL_PORT:-7060}"
 ADAPTER_PORT="${ADAPTER_PORT:-8070}"
-LOG_DIR="${LOG_DIR:-${SERVICE_DIR}/summary_vllm_logs}"
+if [[ -n "${SAFEVL_LOG_DIR:-}" ]]; then
+  LOG_DIR="${LOG_DIR:-${SAFEVL_LOG_DIR}/webinfer}"
+else
+  LOG_DIR="${LOG_DIR:-${SERVICE_DIR}/summary_vllm_logs}"
+fi
 GRACE_SECONDS="${GRACE_SECONDS:-10}"
 
 usage() {

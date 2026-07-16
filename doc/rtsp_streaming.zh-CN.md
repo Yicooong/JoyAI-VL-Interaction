@@ -130,13 +130,13 @@ bash ./rtsp/rtsp.sh <视频路径> <RTSP输出地址>
 ```bash
 bash ./rtsp/rtsp.sh \
   ./videos/demo.mp4 \
-  rtsp://127.0.0.1:8554/test
+  rtsp://127.0.0.1:8554/fire1
 ```
 
 也可以通过环境变量指定 RTSP 地址：
 
 ```bash
-RTSP_URL=rtsp://127.0.0.1:8554/test bash ./rtsp/rtsp.sh ./videos/demo.mp4
+RTSP_URL=rtsp://127.0.0.1:8554/fire1 bash ./rtsp/rtsp.sh ./videos/demo.mp4
 ```
 
 ## 推流参数

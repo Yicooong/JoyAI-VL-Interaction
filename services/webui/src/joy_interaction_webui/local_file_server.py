@@ -27,8 +27,10 @@ def _project_relative_path(value: str) -> Path:
     return PROJECT_ROOT / path
 
 
+_safevl_cache_dir = os.environ.get("SAFEVL_CACHE_DIR", "").strip()
 LOCAL_HTML_ARTIFACT_DIR = _project_relative_path(
-    os.environ.get("LIVE_VLM_HTML_ARTIFACT_DIR", "html")
+    os.environ.get("LIVE_VLM_HTML_ARTIFACT_DIR")
+    or (str(Path(_safevl_cache_dir).expanduser() / "webui" / "html") if _safevl_cache_dir else "html")
 )
 
 _DISPLAY_PAYLOAD_TYPES = {"background_result_ready"}

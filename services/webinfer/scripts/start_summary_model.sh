@@ -11,7 +11,11 @@ if [[ -n "${VENV_ACTIVATE:-}" ]]; then
 fi
 
 # 日志目录
-LOG_DIR="${LOG_DIR:-${SERVICE_DIR}/summary_vllm_logs}"
+if [[ -n "${SAFEVL_LOG_DIR:-}" ]]; then
+  LOG_DIR="${LOG_DIR:-${SAFEVL_LOG_DIR}/webinfer}"
+else
+  LOG_DIR="${LOG_DIR:-${SERVICE_DIR}/summary_vllm_logs}"
+fi
 mkdir -p "$LOG_DIR"
 
 SUMMARY_GPU="${SUMMARY_GPU:-1}"

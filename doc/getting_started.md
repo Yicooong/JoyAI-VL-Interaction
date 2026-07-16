@@ -167,6 +167,8 @@ Key environment variables (set in start scripts or export before launch):
 | `VENV_ACTIVATE` | auto-detects `services/.venv` | Optional venv activate script path; set `VENV_ACTIVATE=` to use the current shell environment |
 | `MODEL_PATH` | `/tmp/models/JoyAI-VL-Interaction-Preview` | Main model local path |
 | `SUMMARY_MODEL_PATH` | `/tmp/models/Qwen3-VL-4B-Instruct` | Summary model local path |
+| `SAFEVL_CACHE_DIR` | unset | Relocate generated inference results, frame/upload caches, and HTML artifacts under this root. When unset, every original location remains unchanged. |
+| `SAFEVL_LOG_DIR` | unset | Relocate file logs and PID files under this root. Currently applies to the summary vLLM service. |
 | `MAIN_GPU` | `0` | Single physical GPU used by the streaming model service |
 | `SUMMARY_GPU` | `1` | Single physical GPU used by the summary model service |
 | `ADAPTER_PORT` | `8070` | Adapter listen port |
@@ -175,6 +177,8 @@ Key environment variables (set in start scripts or export before launch):
 | `MAIN_MAX_TOKENS` | `256` | Max tokens for main model output |
 | `MAIN_TEMPERATURE` | `0.8` | Sampling temperature |
 | `FORCE_SILENCE_BEFORE_QUERY` | `true` | Suppress output when no user query |
+
+For example, `SAFEVL_CACHE_DIR=/data/safevl/cache SAFEVL_LOG_DIR=/data/safevl/logs bash services/scripts/run.sh all` stores WebInfer data below `cache/webinfer`, WebUI data below `cache/webui`, and summary logs below `logs/webinfer`. Existing fine-grained variables (`LIVE_ADAPTER_SAVE_ROOT`, `FRAME_SAVE_DIR`, `LIVE_VLM_UPLOAD_DIR`, `LIVE_VLM_HTML_ARTIFACT_DIR`, and `LOG_DIR`) take precedence over these roots.
 
 ### ASR
 

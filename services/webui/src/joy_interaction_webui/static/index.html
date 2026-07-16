@@ -3974,31 +3974,17 @@ limitations under the License.
                             <i data-lucide="sparkles"></i>
                         </button>
                         <div class="prompt-popover hidden" id="promptPresetMenu">
-                            <button class="prompt-preset-option" type="button" data-label="请实时解说我的表情和动作" data-prompt="请实时解说我的表情和动作">
+                            <button class="prompt-preset-option" type="button" data-label="请分析画面内容" data-prompt="请分析画面内容">
                                 <span class="prompt-preset-copy">
-                                    <span class="zh">请实时解说我的表情和动作</span>
-                                    <span class="en">Describe my facial expressions and movements in real time</span>
+                                    <span class="zh">请分析画面内容</span>
+                                    <span class="en">Please analyze the scene</span>
                                 </span>
                                 <span class="check">✓</span>
                             </button>
-                            <button class="prompt-preset-option" type="button" data-label="结合画面内容，生成一张水彩风格的图像" data-prompt="结合画面内容，生成一张水彩风格的图像">
+                            <button class="prompt-preset-option" type="button" data-label="发生重要信息请提示我" data-prompt="发生重要信息请提示我">
                                 <span class="prompt-preset-copy">
-                                    <span class="zh">结合画面内容，生成一张水彩风格的图像</span>
-                                    <span class="en">Generate a watercolor-style image based on the scene</span>
-                                </span>
-                                <span class="check">✓</span>
-                            </button>
-                            <button class="prompt-preset-option" type="button" data-label="现在我们玩一个快问快答的游戏，限时30秒，迅速回答问题，结束提醒我" data-prompt="现在我们玩一个快问快答的游戏，限时30秒，迅速回答问题，结束提醒我">
-                                <span class="prompt-preset-copy">
-                                    <span class="zh">现在我们玩一个快问快答的游戏，限时30秒，迅速回答问题，结束提醒我</span>
-                                    <span class="en">Let's play a rapid-fire Q&amp;A game for 30 seconds; answer quickly and remind me when it ends</span>
-                                </span>
-                                <span class="check">✓</span>
-                            </button>
-                            <button class="prompt-preset-option" type="button" data-label="每当一个瓶子出现时，介绍它的样子" data-prompt="每当一个瓶子出现时，介绍它的样子">
-                                <span class="prompt-preset-copy">
-                                    <span class="zh">每当一个瓶子出现时，介绍它的样子</span>
-                                    <span class="en">Whenever a bottle appears, describe what it looks like</span>
+                                    <span class="zh">发生重要信息请提示我</span>
+                                    <span class="en">Notify me when important information appears</span>
                                 </span>
                                 <span class="check">✓</span>
                             </button>
@@ -6864,9 +6850,12 @@ limitations under the License.
                     scrollVlmHistoryToBottom(contentDiv);
                 }
             } else if (historyKey !== lastHistoryKey && (hasInferenceKey || text !== lastText)) {
+                const promptAlreadyShown = vlmHistory.some(entry =>
+                    isForegroundHistoryEntry(entry) && entry.prompt === prompt
+                );
                 const entry = {
                     key: historyKey,
-                    prompt,
+                    prompt: promptAlreadyShown ? '' : prompt,
                     response: displayText,
                     rawText: text,
                     backgroundHandoff: resolvedBackgroundHandoff || null

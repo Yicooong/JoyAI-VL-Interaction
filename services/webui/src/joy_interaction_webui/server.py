@@ -75,7 +75,15 @@ rtsp_tracks = {}  # Track active RTSP streams {session_id: (rtsp_track, processo
 uploaded_videos = {}  # file_id -> {path, session_id}
 http_video_tracks = defaultdict(set)  # session_id -> source tracks used by MJPEG responses
 http_video_tasks = defaultdict(set)  # parent session_id -> active MJPEG request tasks
-video_upload_dir = Path(tempfile.gettempdir()) / "joy-interaction-webui-uploads"
+_safevl_cache_dir = os.environ.get("SAFEVL_CACHE_DIR", "").strip()
+video_upload_dir = Path(
+    os.environ.get("LIVE_VLM_UPLOAD_DIR")
+    or (
+        str(Path(_safevl_cache_dir).expanduser() / "webui" / "uploads")
+        if _safevl_cache_dir
+        else Path(tempfile.gettempdir()) / "joy-interaction-webui-uploads"
+    )
+).expanduser()
 video_library_dir = Path(
     os.environ.get("LIVE_VLM_VIDEO_DIR", str(Path.cwd() / "videos"))
 ).expanduser().resolve()

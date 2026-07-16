@@ -32,6 +32,8 @@ Environment:
   WEBINFER_ARGS="..."         Extra args for services/webinfer/scripts/run.sh all.
   WEBUI_ARGS="..."            Extra args for services/webui/scripts/start_server.sh.
   WEBRTC_TRANSPORT=tcp         WebUI media transport: tcp (default) or udp.
+  SAFEVL_CACHE_DIR=/path       Root for generated caches/results (defaults unchanged if unset).
+  SAFEVL_LOG_DIR=/path         Root for file logs (defaults unchanged if unset).
   SERVICE_READY_TIMEOUT=900   Max seconds to wait for backend readiness before WebUI.
   SERVICE_READY_INTERVAL=5    Seconds between backend readiness checks.
 EOF

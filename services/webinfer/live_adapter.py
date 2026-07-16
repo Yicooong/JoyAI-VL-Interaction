@@ -89,7 +89,12 @@ def _get_i18n(language: str = "en") -> dict[str, str]:
         "qa_query_label": QA_QUERY_LABEL_ZH,
         "qa_response_label": QA_RESPONSE_LABEL_ZH,
     }
-DEFAULT_SAVE_ROOT = "result"
+SAFEVL_CACHE_DIR = os.environ.get("SAFEVL_CACHE_DIR", "").strip()
+DEFAULT_SAVE_ROOT = (
+    str(Path(SAFEVL_CACHE_DIR).expanduser() / "webinfer" / "result")
+    if SAFEVL_CACHE_DIR
+    else "result"
+)
 TIME_RANGE_RE = re.compile(
     r"<(?P<range>\d+(?:\.\d+)?\s*(?:seconds?|s)(?:\s*(?:~|-)\s*\d+(?:\.\d+)?\s*(?:seconds?|s))?)>"
 )
@@ -2504,7 +2509,12 @@ def parse_args() -> AdapterConfig:
     )
     parser.add_argument(
         "--frame-save-dir",
-        default=os.environ.get("FRAME_SAVE_DIR", "/tmp/streaming_adapter_frames"),
+        default=os.environ.get("FRAME_SAVE_DIR")
+        or (
+            str(Path(SAFEVL_CACHE_DIR).expanduser() / "webinfer" / "frames")
+            if SAFEVL_CACHE_DIR
+            else "/tmp/streaming_adapter_frames"
+        ),
         help="Directory to save base64 frames received from WebUI.",
     )
     parser.add_argument(
