@@ -45,5 +45,6 @@ CUDA_VISIBLE_DEVICES="${MAIN_GPU}" "${PYTHON_BIN}" -m vllm.entrypoints.openai.ap
     --tensor-parallel-size "${TENSOR_PARALLEL_SIZE}" \
     --data-parallel-size "${DATA_PARALLEL_SIZE}" \
     --data-parallel-size-local "${DATA_PARALLEL_SIZE_LOCAL}" \
-    --enable-prefix-caching \
-    --enable-chunked-prefill
+    --no-enable-prefix-caching \
+    --enable-chunked-prefill \
+    --mm-processor-cache-gb 0

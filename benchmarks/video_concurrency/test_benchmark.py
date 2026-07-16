@@ -7,8 +7,8 @@ from pathlib import Path
 
 from benchmark import (
     DropRecord, RequestRecord, build_request_kwargs, discover_media, json_safe,
-    percentile, response_category, select_sources, summarize, use_streaming,
-    write_outputs,
+    parse_prometheus_histograms, percentile, response_category, select_sources, summarize, use_streaming,
+    vllm_metrics_delta, write_outputs,
 )
 
 
@@ -111,6 +111,33 @@ class BenchmarkSummaryTests(unittest.TestCase):
         self.assertEqual(response_category("现场出现了一辆车"), "response")
         self.assertEqual(response_category(""), "empty")
 
+
+    def test_parses_supplied_vllm_metrics_log(self):
+        log_path = Path(__file__).parent / "results" / "vllm_log.log"
+        parsed = parse_prometheus_histograms(log_path.read_text(encoding="utf-8"))
+        ttft = parsed["vllm:time_to_first_token_seconds"]
+        self.assertEqual(ttft["count"], 157)
+        self.assertEqual(ttft["model_names"], ["JoyAI-VL-Interaction-Preview"])
+        self.assertIn(0.25, ttft["buckets"])
+
+    def test_vllm_histogram_delta_converts_seconds_to_ms(self):
+        before = parse_prometheus_histograms(
+            'vllm:time_to_first_token_seconds_bucket{le="0.5"} 1\n'
+            'vllm:time_to_first_token_seconds_bucket{le="+Inf"} 1\n'
+            'vllm:time_to_first_token_seconds_count 1\n'
+            'vllm:time_to_first_token_seconds_sum 0.2\n'
+        )
+        after = parse_prometheus_histograms(
+            'vllm:time_to_first_token_seconds_bucket{le="0.5"} 2\n'
+            'vllm:time_to_first_token_seconds_bucket{le="1.0"} 3\n'
+            'vllm:time_to_first_token_seconds_bucket{le="+Inf"} 3\n'
+            'vllm:time_to_first_token_seconds_count 3\n'
+            'vllm:time_to_first_token_seconds_sum 1.4\n'
+        )
+        result = vllm_metrics_delta(before, after)["metrics"]["time_to_first_token_ms"]
+        self.assertEqual(result["count"], 2)
+        self.assertAlmostEqual(result["mean"], 600)
+        self.assertAlmostEqual(result["p50"], 500)
 
 if __name__ == "__main__":
     unittest.main()

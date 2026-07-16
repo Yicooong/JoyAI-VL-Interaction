@@ -10,11 +10,13 @@ import csv
 import hashlib
 import json
 import math
+import re
 import random
 import shutil
 import statistics
 import subprocess
 import tempfile
+import urllib.request
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -26,6 +28,14 @@ from typing import Any
 MEDIA_EXTENSIONS = {
     ".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".mpeg", ".mpg",
     ".jpg", ".jpeg", ".png", ".webp",
+
+}
+VLLM_HISTOGRAMS = {
+    "vllm:time_to_first_token_seconds": "time_to_first_token_ms",
+    "vllm:inter_token_latency_seconds": "inter_token_latency_ms",
+    "vllm:e2e_request_latency_seconds": "e2e_request_latency_ms",
+    "vllm:request_prefill_time_seconds": "request_prefill_time_ms",
+    "vllm:request_decode_time_seconds": "request_decode_time_ms",
 }
 
 @dataclass
@@ -209,6 +219,120 @@ def metric_summary(values: list[float | int]) -> dict[str, float | int | None]:
         "max": max(numeric) if numeric else None,
     }
 
+
+def parse_prometheus_histograms(text: str) -> dict[str, Any]:
+    """Parse selected vLLM histograms, aggregating engines with the same metric."""
+    parsed: dict[str, Any] = {
+        name: {"buckets": {}, "count": 0.0, "sum": 0.0, "model_names": set()}
+        for name in VLLM_HISTOGRAMS
+    }
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or " " not in line:
+            continue
+        sample, value_text = line.rsplit(None, 1)
+        try:
+            value = float(value_text)
+        except ValueError:
+            continue
+        metric_with_suffix = sample.split("{", 1)[0]
+        suffix = next((item for item in ("_bucket", "_count", "_sum")
+                       if metric_with_suffix.endswith(item)), None)
+        if suffix is None:
+            continue
+        metric_name = metric_with_suffix[:-len(suffix)]
+        if metric_name not in parsed:
+            continue
+        labels_text = sample.split("{", 1)[1].rsplit("}", 1)[0] if "{" in sample else ""
+        labels = {
+            match.group(1): match.group(2)
+            for match in re.finditer(
+                r'([A-Za-z_][A-Za-z0-9_]*)="((?:\\.|[^"\\])*)"', labels_text
+            )
+        }
+        if labels.get("model_name"):
+            parsed[metric_name]["model_names"].add(labels["model_name"])
+        if suffix == "_bucket":
+            le_text = labels.get("le")
+            if le_text is None:
+                continue
+            upper = math.inf if le_text in {"+Inf", "Inf"} else float(le_text)
+            buckets = parsed[metric_name]["buckets"]
+            buckets[upper] = buckets.get(upper, 0.0) + value
+        else:
+            parsed[metric_name][suffix[1:]] += value
+    for histogram in parsed.values():
+        histogram["model_names"] = sorted(histogram["model_names"])
+    return parsed
+
+
+def prometheus_histogram_quantile(
+    buckets: dict[float, float], count: float, q: float,
+) -> float | None:
+    """Estimate a quantile using linear interpolation within cumulative buckets."""
+    if count <= 0 or not buckets:
+        return None
+    rank = q * count
+    previous_upper = 0.0
+    previous_count = 0.0
+    finite_bounds = sorted(bound for bound in buckets if math.isfinite(bound))
+    for upper in sorted(buckets):
+        cumulative = buckets[upper]
+        if cumulative >= rank:
+            if not math.isfinite(upper):
+                return finite_bounds[-1] if finite_bounds else None
+            bucket_count = cumulative - previous_count
+            if bucket_count <= 0:
+                return upper
+            return previous_upper + (upper - previous_upper) * (
+                (rank - previous_count) / bucket_count
+            )
+        previous_upper = upper
+        previous_count = cumulative
+    return None
+
+
+def vllm_metrics_delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    """Calculate statistics for one test round from cumulative snapshots."""
+    output: dict[str, Any] = {}
+    all_models: set[str] = set()
+    for prometheus_name, result_name in VLLM_HISTOGRAMS.items():
+        start = before.get(prometheus_name, {})
+        end = after.get(prometheus_name, {})
+        all_models.update(start.get("model_names", []))
+        all_models.update(end.get("model_names", []))
+        count = end.get("count", 0.0) - start.get("count", 0.0)
+        total = end.get("sum", 0.0) - start.get("sum", 0.0)
+        bounds = set(start.get("buckets", {})) | set(end.get("buckets", {}))
+        buckets = {
+            bound: end.get("buckets", {}).get(bound, 0.0)
+            - start.get("buckets", {}).get(bound, 0.0)
+            for bound in bounds
+        }
+        if count < 0 or total < 0 or any(value < 0 for value in buckets.values()):
+            output[result_name] = {
+                "count": 0, "mean": None, "p50": None, "p95": None, "p99": None,
+                "error": "vLLM metrics counters reset during this test round",
+            }
+            continue
+        quantiles = {
+            name: prometheus_histogram_quantile(buckets, count, q)
+            for name, q in (("p50", 0.50), ("p95", 0.95), ("p99", 0.99))
+        }
+        output[result_name] = {
+            "count": int(count) if count.is_integer() else count,
+            "mean": total / count * 1000 if count else None,
+            **{name: value * 1000 if value is not None else None
+               for name, value in quantiles.items()},
+        }
+    return {"model_names": sorted(all_models), "metrics": output}
+
+
+def fetch_vllm_metrics(url: str, timeout: float) -> dict[str, Any]:
+    request = urllib.request.Request(url, headers={"Accept": "text/plain"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        text = response.read().decode("utf-8")
+    return parse_prometheus_histograms(text)
 
 def extract_frames(source: Path, fps: float, work_dir: Path) -> list[bytes]:
     if source.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
@@ -528,6 +652,13 @@ def write_outputs(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     with (output_dir / "summary.csv").open("w", encoding="utf-8", newline="") as handle:
+        vllm_csv_metrics = (
+            ("ttft", "time_to_first_token_ms"),
+            ("itl", "inter_token_latency_ms"),
+            ("e2e", "e2e_request_latency_ms"),
+            ("prefill", "request_prefill_time_ms"),
+            ("decode", "request_decode_time_ms"),
+        )
         fields = [
             "concurrency", "scheduled_frames", "successful_requests", "errors",
             "dropped_frames", "drop_rate", "completed_rps", "effective_fps_per_stream",
@@ -535,6 +666,11 @@ def write_outputs(
             "p50_ttft_ms", "p95_ttft_ms", "p50_tpot_ms", "p95_tpot_ms",
             "mean_output_tokens_per_second", "mean_completion_tokens",
             "silence_rate", "response_rate", "mean_frames_arrived_during_request",
+        ]
+        fields += [
+            f"vllm_{short}_{stat}_ms"
+            for short, _ in vllm_csv_metrics
+            for stat in ("mean", "p50", "p95", "p99")
         ]
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
@@ -544,8 +680,15 @@ def write_outputs(
             output_rate = item.get("output_tokens_per_second", {})
             completion = item.get("completion_tokens", {})
             categories = item.get("response_categories", {})
+            server_metrics = item.get("vllm_metrics", {}).get("metrics", {})
+            vllm_values = {
+                f"vllm_{short}_{stat}_ms": server_metrics.get(metric_name, {}).get(stat)
+                for short, metric_name in vllm_csv_metrics
+                for stat in ("mean", "p50", "p95", "p99")
+            }
             writer.writerow({
                 **{field: item.get(field) for field in fields},
+                **vllm_values,
                 "p50_latency_ms": item["latency_ms"]["p50"],
                 "p95_latency_ms": item["latency_ms"]["p95"],
                 "p99_latency_ms": item["latency_ms"]["p99"],
@@ -559,7 +702,6 @@ def write_outputs(
                 "response_rate": categories.get("response_rate"),
                 "mean_frames_arrived_during_request": item.get("mean_frames_arrived_during_request"),
             })
-
 
 def json_safe(value: Any) -> Any:
     """Recursively convert argparse values such as list[Path] to JSON types."""
@@ -583,6 +725,10 @@ def parse_args() -> argparse.Namespace:
         help="Use SSE for token timing; auto enables it for vLLM only",
     )
     parser.add_argument("--api-base", required=True, help="Example: http://host:7060/v1")
+    parser.add_argument(
+        "--vllm-metrics", default=None,
+        help="Prometheus endpoint of the backend vLLM, e.g. https://host/metrics",
+    )
     parser.add_argument("--api-key", default="EMPTY")
     parser.add_argument("--model", required=True)
     parser.add_argument("--video", type=Path, action="append", required=True,
@@ -635,7 +781,36 @@ async def async_main(args: argparse.Namespace) -> None:
                 if source not in frame_cache:
                     frame_cache[source] = extract_frames(source, args.fps, Path(temp))
             frame_sets = [(source, frame_cache[source]) for source in selected_sources]
+            metrics_before = None
+            metrics_error = None
+            if args.vllm_metrics:
+                try:
+                    metrics_before = await asyncio.to_thread(
+                        fetch_vllm_metrics, args.vllm_metrics, min(args.timeout, 30.0)
+                    )
+                except Exception as exc:
+                    metrics_error = f"before-test metrics request failed: {exc}"
+                    print(f"warning: {metrics_error}", flush=True)
             records, drops, summary = await run_one(args, concurrency, frame_sets)
+            if args.vllm_metrics:
+                try:
+                    metrics_after = await asyncio.to_thread(
+                        fetch_vllm_metrics, args.vllm_metrics, min(args.timeout, 30.0)
+                    )
+                    if metrics_before is not None:
+                        summary["vllm_metrics"] = {
+                            "url": args.vllm_metrics,
+                            **vllm_metrics_delta(metrics_before, metrics_after),
+                        }
+                    else:
+                        summary["vllm_metrics"] = {
+                            "url": args.vllm_metrics, "error": metrics_error,
+                        }
+                except Exception as exc:
+                    summary["vllm_metrics"] = {
+                        "url": args.vllm_metrics,
+                        "error": f"after-test metrics request failed: {exc}",
+                    }
             summary["selected_videos"] = [str(source) for source in selected_sources]
             all_records.extend(records)
             all_drops.extend(drops)

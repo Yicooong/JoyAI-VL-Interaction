@@ -110,6 +110,7 @@ python benchmarks/video_concurrency/benchmark.py \
 | `--target` | 否 | `vllm` | 测试目标。`vllm` 只发送标准 OpenAI 图文请求，测试原始模型服务；`adapter` 额外发送每路独立 session 和连续帧时间戳，测试 webinfer 的有状态完整链路。 |
 | `--streaming` | 否 | `auto` | Token timing 模式。`auto` 对原生 vLLM 启用 SSE、对 adapter 保持非流式；`on` 强制使用 SSE；`off` 只测完整响应延迟。当前 adapter 不提供 SSE，因此 `--target adapter --streaming on` 会被拒绝。 |
 | `--api-base` | 是 | 无 | OpenAI-compatible API 的基础地址，必须包含 `/v1`。`--target vllm` 应填写原生 vLLM 地址（常见端口 7060）；`--target adapter` 应填写 webinfer adapter 地址（默认端口 8070）。 |
+| `--vllm-metrics` | 否 | 无 | 后端 vLLM 的 Prometheus `/metrics` 完整地址。设置后，每个并发档位会在测试前后各抓取一次并计算本轮 Histogram 增量；适用于通过 adapter 测量后端 TTFT、ITL、E2E、Prefill 和 Decode。 |
 | `--api-key` | 否 | `EMPTY` | API 密钥。本地 vLLM 通常不校验密钥，可以保留默认值；远程服务启用鉴权时传入真实密钥。该值不会写入结果文件。 |
 | `--model` | 是 | 无 | 请求体中的模型名称，必须与服务启动时的 `--served-model-name` 一致，例如 `JoyAI-VL-Interaction-Preview`。 |
 
@@ -229,6 +230,37 @@ latency_ms = (59.1850573 - 58.5009066) × 1000 ≈ 684.151 ms
 仍未完成。由于该帧没有发起 API 请求，因此没有 latency、HTTP 状态码或 token 数据。
 每轮 stream 与输入视频的对应关系保存在 `summary.json` 的 `selected_videos` 中；目前
 逐请求记录不重复保存视频路径，也不保存模型响应文本，以控制日志体积。
+
+### 采集后端 vLLM `/metrics`
+
+主要测试 adapter 时，可以额外传入后端 vLLM 的 Prometheus 地址：
+
+```bash
+python benchmarks/video_concurrency/benchmark.py --target adapter --api-base http://ADAPTER_HOST:8070/v1 --vllm-metrics https://VLLM_HOST/metrics ...
+```
+
+Prometheus Histogram 是 vLLM 启动后的累计数据，所以 benchmark 不会只在测试结束时读取。
+每个 `--concurrency` 档位都会在正式请求开始前和尾部请求全部完成后各抓取一次，使用
+`after - before` 得到本轮增量。`summary.json` 每轮结果的 `vllm_metrics.metrics`
+包含以下字段，单位均为毫秒：
+
+- `time_to_first_token_ms`：后端 vLLM TTFT；
+- `inter_token_latency_ms`：相邻输出 token 的延迟；
+- `e2e_request_latency_ms`：vLLM 内部请求端到端延迟；
+- `request_prefill_time_ms`：Prefill 阶段耗时；
+- `request_decode_time_ms`：Decode 阶段耗时。
+
+每项保存 `count`、`mean`、`p50`、`p95` 和 `p99`。`mean` 由本轮 `_sum/_count`
+精确计算；分位数根据 bucket 增量做线性插值，是 Histogram 近似值。
+`inter_token_latency_ms.count` 是 token 间隔数量，其他四项通常是请求数量，因此它们
+不要求相等。相同数据也会展开写入 `summary.csv`，列名前缀分别为 `vllm_ttft_`、
+`vllm_itl_`、`vllm_e2e_`、`vllm_prefill_` 和 `vllm_decode_`。
+
+如果抓取失败，测试本身仍继续，错误写入该轮 `vllm_metrics.error`。如果测试期间 vLLM
+重启导致计数器回退，相应指标会记录 counter reset 错误。`/metrics` 是服务级聚合数据；
+为避免混入其他用户或 summarizer 请求，测试期间应独占该 vLLM，或确保指标端点只服务
+目标 main model。它衡量的是 adapter 后端 vLLM 的服务端时间，不包含 adapter session
+锁等待、prompt 构造、网络和后处理，因此不能直接视为完整的 adapter 端到端 TTFT。
 
 ### TTFT、TPOT 与场景分层
 

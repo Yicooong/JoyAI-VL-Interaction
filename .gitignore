@@ -94,4 +94,6 @@ videos/
 tools/
 benchmarks/video_concurrency/results
 benchmarks/video_concurrency/scripts
-
+datasets
+pj_deploy.sh
+pj_env.sh
