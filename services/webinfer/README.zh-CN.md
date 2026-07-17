@@ -77,7 +77,7 @@ http://127.0.0.1:8070/v1
 | `GET /health` | 健康检查；返回后端列表、会话数量和摘要器状态。 |
 | `GET /v1/models` | 返回可用主模型；默认是 `JoyAI-VL-Interaction-Preview`。 |
 | `POST /v1/chat/completions` | 核心端点；兼容 OpenAI chat completions，并支持图像帧。 |
-| `POST /v1/streaming/reset` | 重置会话并清空已有输出。 |
+| `POST /v1/streaming/reset` | 取消正在执行的请求、重置会话并清空已有输出。 |
 
 推荐将 session 放在 header 中：
 

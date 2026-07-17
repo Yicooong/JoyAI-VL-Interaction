@@ -77,7 +77,7 @@ http://127.0.0.1:8070/v1
 | `GET /health` | Health check; returns the backend list, session count, and summarizer status. |
 | `GET /v1/models` | Returns available main models; default is `JoyAI-VL-Interaction-Preview`. |
 | `POST /v1/chat/completions` | Core endpoint; compatible with OpenAI chat completions and supports image frames. |
-| `POST /v1/streaming/reset` | Resets a session and flushes existing outputs. |
+| `POST /v1/streaming/reset` | Cancels active requests, resets a session, and flushes existing outputs. |
 
 The recommended place for the session is the header:
 

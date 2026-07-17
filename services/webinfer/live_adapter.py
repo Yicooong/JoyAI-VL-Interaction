@@ -25,6 +25,7 @@ import logging
 import math
 import os
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -590,12 +591,14 @@ class SessionState:
     last_access: float = field(default_factory=time.time)
     _pending_qa_archive: Optional[tuple[str, Optional[str]]] = field(default=None, repr=False)
     _pending_write_task: Optional[asyncio.Task] = field(default=None, repr=False)
+    cancel_event: threading.Event = field(default_factory=threading.Event, repr=False)
 
 
 class StreamingInferAdapter:
     def __init__(self, config: AdapterConfig):
         self.config = config
         self.sessions: dict[str, SessionState] = {}
+        self._active_request_tasks: dict[str, set[asyncio.Task]] = {}
         self._cleanup_task: Optional[asyncio.Task] = None
         Path(config.frame_save_dir).mkdir(parents=True, exist_ok=True)
         self.main_client = AsyncOpenAI(
@@ -759,29 +762,72 @@ class StreamingInferAdapter:
         payload = await _read_json(request)
         session_id = _request_session_id(request, payload)
         session_id = _safe_session_id(session_id)
+        removed, cancelled_requests = await self._reset_session(session_id)
+        return web.json_response(
+            {
+                "ok": True,
+                "session_id": session_id,
+                "removed": removed,
+                "cancelled_requests": cancelled_requests,
+            }
+        )
+
+    async def _reset_session(self, session_id: str) -> tuple[bool, int]:
+        """Cancel all work owned by a session and discard its in-memory state."""
         removed_state = self.sessions.pop(session_id, None)
         if removed_state is not None:
+            removed_state.cancel_event.set()
             for job in removed_state.async_pending_summary_jobs:
                 job["task"].cancel()
-            await self._flush_session_outputs(removed_state)
+        request_tasks = [
+            task
+            for task in self._active_request_tasks.pop(session_id, set())
+            if not task.done()
+        ]
+        for task in request_tasks:
+            task.cancel()
+        if request_tasks:
+            await asyncio.gather(*request_tasks, return_exceptions=True)
         removed = removed_state is not None
-        return web.json_response({"ok": True, "session_id": session_id, "removed": removed})
+        if removed_state is not None:
+            await self._flush_session_outputs(removed_state)
+        return removed, len(request_tasks)
 
     async def handle_chat_completions(self, request: web.Request) -> web.Response:
         payload = await _read_json(request)
         session_id = _request_session_id(request, payload)
+        session_id = _safe_session_id(session_id)
         requested_model = payload.get("model")
         client, model_name = self._resolve_backend(requested_model)
         state = self.get_session(session_id)
-        async with state.lock:
-            try:
-                result = await self._handle_chat_payload(state, payload, request, client=client, model_name=model_name)
-            except web.HTTPException:
-                raise
-            except Exception as exc:
-                LOGGER.exception("chat completion failed")
-                return _openai_error_response(str(exc), status=502)
-        return web.json_response(result)
+        current_task = asyncio.current_task()
+        if current_task is not None:
+            self._active_request_tasks.setdefault(session_id, set()).add(current_task)
+        try:
+            async with state.lock:
+                result = await self._handle_chat_payload(
+                    state,
+                    payload,
+                    request,
+                    client=client,
+                    model_name=model_name,
+                )
+            return web.json_response(result)
+        except asyncio.CancelledError:
+            LOGGER.info("[%s] cancelled active chat completion", session_id)
+            raise
+        except web.HTTPException:
+            raise
+        except Exception as exc:
+            LOGGER.exception("chat completion failed")
+            return _openai_error_response(str(exc), status=502)
+        finally:
+            if current_task is not None:
+                tasks = self._active_request_tasks.get(session_id)
+                if tasks is not None:
+                    tasks.discard(current_task)
+                    if not tasks:
+                        self._active_request_tasks.pop(session_id, None)
 
     def _session_output_path(self, state: SessionState, light: bool) -> Optional[Path]:
         if light:
@@ -1666,6 +1712,8 @@ class StreamingInferAdapter:
         query_start_time: Optional[str] = None,
     ) -> tuple[dict[str, Any], float]:
         assert self.summarizer is not None
+        if state.cancel_event.is_set():
+            raise asyncio.CancelledError
         resolved_chunk_index = chunk_index if chunk_index is not None else state.chunk_index
         resolved_query_text = current_query_text if current_query_text is not None else (state.current_query_text or "")
         resolved_query_start_time = query_start_time if query_start_time is not None else state.query_start_time
@@ -1684,6 +1732,8 @@ class StreamingInferAdapter:
             chunk_snapshot["frame_count"],
             resolved_query_text,
         )
+        if state.cancel_event.is_set():
+            raise asyncio.CancelledError
         elapsed = time.time() - start
         debug_input_path = self._save_summarizer_debug_input(
             state,
@@ -1708,6 +1758,8 @@ class StreamingInferAdapter:
 
     def _compress_mid_terms(self, state: SessionState) -> None:
         assert self.summarizer is not None
+        if state.cancel_event.is_set():
+            raise asyncio.CancelledError
         batch_index = state.long_term_compression_next_index
         state.long_term_compression_next_index += 1
         source_chunk_indices = [
@@ -1721,6 +1773,8 @@ class StreamingInferAdapter:
             state.memory_state["long_term_memory"],
             state.mid_term_summaries,
         )
+        if state.cancel_event.is_set():
+            raise asyncio.CancelledError
         elapsed = time.time() - start
         state.memory_state["long_term_memory"] = merged
         for entry in state.mid_term_summaries:
